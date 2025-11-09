@@ -1,0 +1,138 @@
+# EatEase Project - Git Ignore File
+
+# ===================================
+# Python / Backend
+# ===================================
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Flask
+instance/
+.webassets-cache
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+*.pid
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# ML Models & Data
+models/*.pt
+models/*.pth
+models/*.h5
+models/*.pkl
+!models/.gitkeep
+
+# Uploads
+uploads/*
+!uploads/.gitkeep
+
+# Database Migrations (keep structure, ignore instance)
+migrations/versions/__pycache__/
+
+# ===================================
+# Flutter / Frontend
+# ===================================
+
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+
+# iOS
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/.generated/
+
+# Android
+**/android/.gradle/
+**/android/captures/
+**/android/local.properties
+**/android/**/GeneratedPluginRegistrant.java
+**/android/key.properties
+*.jks
+*.keystore
+
+# Flutter Coverage
+coverage/
+
+# ===================================
+# General
+# ===================================
+
+# OS Files
+Thumbs.db
+.DS_Store
+
+# Temporary Files
+*.tmp
+*.temp
+*.bak
+
+# Compressed Files
+*.zip
+*.tar.gz
+*.rar
+
+# ===================================
+# Project Specific
+# ===================================
+
+# Claude AI files
+.claude/
+agents/
+agents-library/
+
+# Documentation temp files
+_documentation/*.docx
+_documentation/~$*
+
+# Temporary files
+nul
+
+# Keep README files
+!README.md
+!**/README.md
