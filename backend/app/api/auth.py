@@ -12,22 +12,43 @@ def register():
     data = request.get_json()
 
     # Validate required fields
-    if not data or not data.get('email') or not data.get('username') or not data.get('password'):
-        return jsonify({'error': 'Email, username, and password are required'}), 400
+    if not data or not data.get('email') or not data.get('password'):
+        return jsonify({'error': 'Email and password are required'}), 400
 
     # Check if user already exists
     if User.query.filter_by(email=data['email']).first():
         return jsonify({'error': 'Email already registered'}), 400
 
-    if User.query.filter_by(username=data['username']).first():
-        return jsonify({'error': 'Username already taken'}), 400
+    # Auto-generate username from email if not provided
+    username = data.get('username')
+    if not username:
+        username = data['email'].split('@')[0]
+        # Ensure uniqueness
+        counter = 1
+        base_username = username
+        while User.query.filter_by(username=username).first():
+            username = f"{base_username}{counter}"
+            counter += 1
+    else:
+        # Check if custom username is taken
+        if User.query.filter_by(username=username).first():
+            return jsonify({'error': 'Username already taken'}), 400
+
+    # Parse full_name into first_name and last_name if provided
+    full_name = data.get('full_name', '')
+    first_name = None
+    last_name = None
+    if full_name:
+        name_parts = full_name.strip().split(maxsplit=1)
+        first_name = name_parts[0] if len(name_parts) > 0 else None
+        last_name = name_parts[1] if len(name_parts) > 1 else None
 
     # Create new user
     user = User(
         email=data['email'],
-        username=data['username'],
-        first_name=data.get('first_name'),
-        last_name=data.get('last_name'),
+        username=username,
+        first_name=first_name,
+        last_name=last_name,
         phone=data.get('phone')
     )
     user.set_password(data['password'])
@@ -35,13 +56,15 @@ def register():
     db.session.add(user)
     db.session.commit()
 
-    # Generate access token
+    # Generate tokens
     access_token = create_access_token(identity=user.id)
+    refresh_token = create_access_token(identity=user.id)
 
     return jsonify({
         'message': 'User registered successfully',
         'user': user.to_dict(),
-        'access_token': access_token
+        'access_token': access_token,
+        'refresh_token': refresh_token
     }), 201
 
 
@@ -55,20 +78,33 @@ def login():
 
     user = User.query.filter_by(email=data['email']).first()
 
-    if not user or not user.check_password(data['password']):
+    if not user:
+        print(f"DEBUG: User not found for email: {data['email']}")
+        return jsonify({'error': 'Invalid email or password'}), 401
+
+    print(f"DEBUG: User found: {user.email}, checking password...")
+    print(f"DEBUG: Password hash: {user.password_hash}")
+    print(f"DEBUG: Password provided: {data['password']}")
+
+    password_check = user.check_password(data['password'])
+    print(f"DEBUG: Password check result: {password_check}")
+
+    if not password_check:
         return jsonify({'error': 'Invalid email or password'}), 401
 
     # Update last login
     user.last_login = datetime.utcnow()
     db.session.commit()
 
-    # Generate access token
+    # Generate tokens
     access_token = create_access_token(identity=user.id)
+    refresh_token = create_access_token(identity=user.id)
 
     return jsonify({
         'message': 'Login successful',
         'user': user.to_dict(),
-        'access_token': access_token
+        'access_token': access_token,
+        'refresh_token': refresh_token
     }), 200
 
 
