@@ -1,5 +1,7 @@
-from flask import request, jsonify
+from flask import request, jsonify, url_for, send_file
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from werkzeug.utils import secure_filename
+import os
 from app import db
 from app.models import User, UserPreference, MealPlan, ShoppingList
 from app.api import users_bp
@@ -9,7 +11,7 @@ from app.api import users_bp
 @jwt_required()
 def get_profile():
     """Get user profile"""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     user = User.query.get(user_id)
 
     if not user:
@@ -22,7 +24,7 @@ def get_profile():
 @jwt_required()
 def update_profile():
     """Update user profile"""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     user = User.query.get(user_id)
 
     if not user:
@@ -46,11 +48,81 @@ def update_profile():
     }), 200
 
 
+@users_bp.route('/profile/photo', methods=['POST'])
+@jwt_required()
+def upload_profile_photo():
+    """Upload profile photo"""
+    user_id = int(get_jwt_identity())
+    user = User.query.get(user_id)
+
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    # Check if file is present
+    if 'photo' not in request.files:
+        return jsonify({'error': 'No photo file provided'}), 400
+
+    file = request.files['photo']
+
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+
+    # Validate file type
+    allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+    if '.' not in file.filename or \
+       file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
+        return jsonify({'error': 'Invalid file type. Allowed: png, jpg, jpeg, gif, webp'}), 400
+
+    # Create uploads directory if it doesn't exist
+    upload_folder = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'uploads', 'profile_photos')
+    os.makedirs(upload_folder, exist_ok=True)
+
+    # Generate secure filename with user ID
+    ext = file.filename.rsplit('.', 1)[1].lower()
+    filename = f"user_{user_id}.{ext}"
+    filepath = os.path.join(upload_folder, filename)
+
+    # Delete old photo if exists
+    if user.profile_photo and os.path.exists(user.profile_photo):
+        try:
+            os.remove(user.profile_photo)
+        except:
+            pass
+
+    # Save new photo
+    file.save(filepath)
+
+    # Update user profile
+    user.profile_photo = filepath
+
+    db.session.commit()
+
+    return jsonify({
+        'message': 'Profile photo uploaded successfully',
+        'user': user.to_dict()
+    }), 200
+
+
+@users_bp.route('/profile/photo/<int:user_id>', methods=['GET'])
+def get_profile_photo(user_id):
+    """Get profile photo"""
+    user = User.query.get(user_id)
+
+    if not user or not user.profile_photo:
+        # Return default avatar
+        return jsonify({'error': 'No profile photo found'}), 404
+
+    if not os.path.exists(user.profile_photo):
+        return jsonify({'error': 'Photo file not found'}), 404
+
+    return send_file(user.profile_photo, mimetype='image/jpeg')
+
+
 @users_bp.route('/preferences', methods=['GET'])
 @jwt_required()
 def get_preferences():
     """Get user preferences"""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     preference = UserPreference.query.filter_by(user_id=user_id).first()
 
     if not preference:
@@ -63,7 +135,7 @@ def get_preferences():
 @jwt_required()
 def update_preferences():
     """Create or update user preferences"""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     data = request.get_json()
 
     preference = UserPreference.query.filter_by(user_id=user_id).first()
@@ -115,10 +187,23 @@ def update_preferences():
 
 
 @users_bp.route('/meal-plans', methods=['GET'])
-@jwt_required()
 def get_meal_plans():
     """Get user's meal plans"""
-    user_id = get_jwt_identity()
+    # Debug: Print request headers
+    print(f"DEBUG: Request headers: {dict(request.headers)}")
+    print(f"DEBUG: Authorization header: {request.headers.get('Authorization', 'NOT FOUND')}")
+
+    # Now apply JWT requirement
+    from flask_jwt_extended import verify_jwt_in_request
+    try:
+        verify_jwt_in_request()
+        user_id = int(get_jwt_identity())  # Convert string to int
+        print(f"DEBUG: Successfully got user_id: {user_id}")
+    except Exception as e:
+        print(f"DEBUG: JWT Error in get_meal_plans: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'JWT Error: {str(e)}'}), 422
 
     # Query parameters
     start_date = request.args.get('start_date')
@@ -142,7 +227,7 @@ def get_meal_plans():
 @jwt_required()
 def create_meal_plan():
     """Create a new meal plan"""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     data = request.get_json()
 
     if not data or not data.get('recipe_id') or not data.get('planned_date'):
@@ -174,7 +259,7 @@ def create_meal_plan():
 @jwt_required()
 def update_meal_plan(meal_plan_id):
     """Update a meal plan"""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     meal_plan = MealPlan.query.filter_by(id=meal_plan_id, user_id=user_id).first()
 
     if not meal_plan:
@@ -210,7 +295,7 @@ def update_meal_plan(meal_plan_id):
 @jwt_required()
 def delete_meal_plan(meal_plan_id):
     """Delete a meal plan"""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     meal_plan = MealPlan.query.filter_by(id=meal_plan_id, user_id=user_id).first()
 
     if not meal_plan:
@@ -226,7 +311,7 @@ def delete_meal_plan(meal_plan_id):
 @jwt_required()
 def get_shopping_lists():
     """Get user's shopping lists"""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
 
     active_only = request.args.get('active_only', 'true').lower() == 'true'
 
@@ -246,7 +331,7 @@ def get_shopping_lists():
 @jwt_required()
 def generate_shopping_list():
     """Generate shopping list from meal plans"""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     data = request.get_json()
 
     if not data or not data.get('start_date') or not data.get('end_date'):
@@ -308,7 +393,7 @@ def generate_shopping_list():
 @jwt_required()
 def update_shopping_list(list_id):
     """Update shopping list"""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     shopping_list = ShoppingList.query.filter_by(id=list_id, user_id=user_id).first()
 
     if not shopping_list:
@@ -335,7 +420,7 @@ def update_shopping_list(list_id):
 @jwt_required()
 def delete_shopping_list(list_id):
     """Delete shopping list"""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     shopping_list = ShoppingList.query.filter_by(id=list_id, user_id=user_id).first()
 
     if not shopping_list:

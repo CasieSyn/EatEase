@@ -56,9 +56,9 @@ def register():
     db.session.add(user)
     db.session.commit()
 
-    # Generate tokens
-    access_token = create_access_token(identity=user.id)
-    refresh_token = create_access_token(identity=user.id)
+    # Generate tokens (identity must be a string)
+    access_token = create_access_token(identity=str(user.id))
+    refresh_token = create_access_token(identity=str(user.id))
 
     return jsonify({
         'message': 'User registered successfully',
@@ -96,9 +96,9 @@ def login():
     user.last_login = datetime.utcnow()
     db.session.commit()
 
-    # Generate tokens
-    access_token = create_access_token(identity=user.id)
-    refresh_token = create_access_token(identity=user.id)
+    # Generate tokens (identity must be a string)
+    access_token = create_access_token(identity=str(user.id))
+    refresh_token = create_access_token(identity=str(user.id))
 
     return jsonify({
         'message': 'Login successful',
@@ -112,7 +112,7 @@ def login():
 @jwt_required()
 def get_current_user():
     """Get current authenticated user"""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())  # Convert string to int
     user = User.query.get(user_id)
 
     if not user:
@@ -125,7 +125,7 @@ def get_current_user():
 @jwt_required()
 def refresh_token():
     """Refresh access token"""
-    user_id = get_jwt_identity()
-    access_token = create_access_token(identity=user_id)
+    user_id = get_jwt_identity()  # This will be a string now
+    access_token = create_access_token(identity=user_id)  # Already a string
 
     return jsonify({'access_token': access_token}), 200

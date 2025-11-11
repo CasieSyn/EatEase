@@ -3,6 +3,10 @@ import 'package:provider/provider.dart';
 import '../services/auth_provider.dart';
 import 'login_screen.dart';
 import 'recipes_screen.dart';
+import 'ingredients_screen.dart';
+import 'meal_plans_screen.dart';
+import 'shopping_lists_screen.dart';
+import 'profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,9 +20,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final List<Widget> _screens = [
     const RecipesScreen(),
-    const IngredientsTab(),
-    const MealPlansTab(),
-    const ProfileTab(),
+    const IngredientsScreen(),
+    const MealPlansScreen(),
+    const ShoppingListsScreen(),
+    const ProfileScreen(),
   ];
 
   @override
@@ -69,98 +74,12 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Meal Plans',
           ),
           BottomNavigationBarItem(
+            icon: Icon(Icons.shopping_cart),
+            label: 'Shopping',
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.person),
             label: 'Profile',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Ingredients Tab
-class IngredientsTab extends StatelessWidget {
-  const IngredientsTab({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.food_bank, size: 64, color: Colors.grey[400]),
-          const SizedBox(height: 16),
-          Text(
-            'Ingredients',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Manage your available ingredients',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey,
-                ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Meal Plans Tab
-class MealPlansTab extends StatelessWidget {
-  const MealPlansTab({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.calendar_today, size: 64, color: Colors.grey[400]),
-          const SizedBox(height: 16),
-          Text(
-            'Meal Plans',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Plan your meals for the week',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey,
-                ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Profile Tab
-class ProfileTab extends StatelessWidget {
-  const ProfileTab({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
-    final user = authProvider.user;
-
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.person, size: 64, color: Colors.grey[400]),
-          const SizedBox(height: 16),
-          Text(
-            user?.fullName ?? 'User Profile',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            user?.email ?? 'No email',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey,
-                ),
           ),
         ],
       ),
