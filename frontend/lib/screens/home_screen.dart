@@ -7,6 +7,7 @@ import 'ingredients_screen.dart';
 import 'meal_plans_screen.dart';
 import 'shopping_lists_screen.dart';
 import 'profile_screen.dart';
+import 'ingredient_detection_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,8 +22,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<Widget> _screens = [
     const RecipesScreen(),
     const IngredientsScreen(),
-    const MealPlansScreen(),
     const ShoppingListsScreen(),
+    const MealPlansScreen(),
     const ProfileScreen(),
   ];
 
@@ -50,36 +51,64 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: _screens[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const IngredientDetectionScreen(),
+            ),
+          );
         },
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.green,
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.restaurant_menu),
-            label: 'Recipes',
+        icon: const Icon(Icons.camera_alt),
+        label: const Text('AI Detect'),
+        backgroundColor: Colors.green,
+        foregroundColor: Colors.white,
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: BottomAppBar(
+        shape: const CircularNotchedRectangle(),
+        notchMargin: 8.0,
+        child: SizedBox(
+          height: 60,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildNavItem(Icons.restaurant_menu, 'Recipes', 0),
+              _buildNavItem(Icons.food_bank, 'Ingredients', 1),
+              const SizedBox(width: 80), // Space for FAB
+              _buildNavItem(Icons.shopping_cart, 'Shopping', 2),
+              _buildNavItem(Icons.calendar_today, 'Plans', 3),
+              _buildNavItem(Icons.person, 'Profile', 4),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.food_bank),
-            label: 'Ingredients',
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem(IconData icon, String label, int index) {
+    final isSelected = _currentIndex == index;
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _currentIndex = index;
+        });
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            color: isSelected ? Colors.green : Colors.grey,
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today),
-            label: 'Meal Plans',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart),
-            label: 'Shopping',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: isSelected ? Colors.green : Colors.grey,
+            ),
           ),
         ],
       ),
