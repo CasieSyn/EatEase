@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../main.dart';
 import '../services/auth_provider.dart';
 import 'register_screen.dart';
 import 'home_screen.dart';
@@ -44,7 +45,9 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(authProvider.error ?? 'Login failed'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
     }
@@ -63,12 +66,27 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // Logo icon
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.restaurant_menu,
+                      size: 56,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
                   // Logo/Title
                   Text(
                     'EatEase',
                     style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: Colors.green,
+                          color: AppColors.primary,
                         ),
                     textAlign: TextAlign.center,
                   ),
@@ -76,21 +94,34 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(
                     'AI-Powered Filipino Meal Planning',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey,
+                          color: AppColors.onSurfaceVariant,
                         ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 48),
 
+                  // Welcome text
+                  Text(
+                    'Welcome Back',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Sign in to continue cooking delicious meals',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 32),
+
                   // Email field
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Email',
                       hintText: 'Enter your email',
-                      prefixIcon: Icon(Icons.email),
-                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.email_outlined, color: AppColors.onSurfaceVariant),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -111,12 +142,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     decoration: InputDecoration(
                       labelText: 'Password',
                       hintText: 'Enter your password',
-                      prefixIcon: const Icon(Icons.lock),
+                      prefixIcon: Icon(Icons.lock_outline, color: AppColors.onSurfaceVariant),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword
-                              ? Icons.visibility_off
-                              : Icons.visibility,
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          color: AppColors.onSurfaceVariant,
                         ),
                         onPressed: () {
                           setState(() {
@@ -124,7 +156,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           });
                         },
                       ),
-                      border: const OutlineInputBorder(),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -136,21 +167,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
 
                   // Login button
                   Consumer<AuthProvider>(
                     builder: (context, authProvider, child) {
                       return ElevatedButton(
                         onPressed: authProvider.isLoading ? null : _handleLogin,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
                         child: authProvider.isLoading
                             ? const SizedBox(
                                 height: 20,
@@ -162,20 +185,20 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 ),
                               )
-                            : const Text(
-                                'Login',
-                                style: TextStyle(fontSize: 16),
-                              ),
+                            : const Text('Sign In'),
                       );
                     },
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
 
                   // Register link
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text("Don't have an account? "),
+                      Text(
+                        "Don't have an account? ",
+                        style: TextStyle(color: AppColors.onSurfaceVariant),
+                      ),
                       TextButton(
                         onPressed: () {
                           Navigator.of(context).push(
@@ -184,13 +207,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           );
                         },
-                        child: const Text(
-                          'Register',
-                          style: TextStyle(
-                            color: Colors.green,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        child: const Text('Create Account'),
                       ),
                     ],
                   ),

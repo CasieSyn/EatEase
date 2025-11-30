@@ -61,3 +61,8 @@ htmlcov/
 # Logs
 *.log
 logs/
+
+# Google Cloud Credentials (NEVER commit these!)
+credentials/
+*.json
+!package*.json

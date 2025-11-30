@@ -5,8 +5,7 @@ Provides intelligent recipe recommendations based on user preferences and histor
 
 from typing import List, Dict, Optional
 from datetime import datetime, timedelta
-from sqlalchemy import func
-from app.models import Recipe, UserPreference, MealPlan, User, RecipeIngredient, Ingredient
+from app.models import Recipe, UserPreference, MealPlan, RecipeIngredient, Ingredient
 from app import db
 
 
@@ -49,13 +48,13 @@ class RecipeRecommender:
         # Apply dietary filters if preferences exist
         if preferences:
             if preferences.is_vegetarian:
-                query = query.filter(Recipe.is_vegetarian == True)
+                query = query.filter(Recipe.is_vegetarian.is_(True))
             if preferences.is_vegan:
-                query = query.filter(Recipe.is_vegan == True)
+                query = query.filter(Recipe.is_vegan.is_(True))
             if preferences.is_gluten_free:
-                query = query.filter(Recipe.is_gluten_free == True)
+                query = query.filter(Recipe.is_gluten_free.is_(True))
             if preferences.is_dairy_free:
-                query = query.filter(Recipe.is_dairy_free == True)
+                query = query.filter(Recipe.is_dairy_free.is_(True))
 
         recipes = query.all()
 
@@ -207,7 +206,7 @@ class RecipeRecommender:
         recent_meals = db.session.query(MealPlan.recipe_id).filter(
             MealPlan.user_id == user_id,
             MealPlan.planned_date >= cutoff_date,
-            MealPlan.is_completed == True
+            MealPlan.is_completed.is_(True)
         ).distinct().all()
 
         return [meal[0] for meal in recent_meals]
@@ -302,13 +301,13 @@ class RecipeRecommender:
         # Apply dietary filters
         if dietary_filters:
             if dietary_filters.get('is_vegetarian'):
-                query = query.filter(Recipe.is_vegetarian == True)
+                query = query.filter(Recipe.is_vegetarian.is_(True))
             if dietary_filters.get('is_vegan'):
-                query = query.filter(Recipe.is_vegan == True)
+                query = query.filter(Recipe.is_vegan.is_(True))
             if dietary_filters.get('is_gluten_free'):
-                query = query.filter(Recipe.is_gluten_free == True)
+                query = query.filter(Recipe.is_gluten_free.is_(True))
             if dietary_filters.get('is_dairy_free'):
-                query = query.filter(Recipe.is_dairy_free == True)
+                query = query.filter(Recipe.is_dairy_free.is_(True))
 
         # Order by rating and view count
         query = query.order_by(Recipe.rating.desc(), Recipe.view_count.desc())

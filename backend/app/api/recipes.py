@@ -171,6 +171,83 @@ def create_recipe():
     }), 201
 
 
+@recipes_bp.route('/<int:recipe_id>', methods=['PUT'])
+@jwt_required()
+def update_recipe(recipe_id):
+    """Update an existing recipe"""
+    data = request.get_json()
+
+    recipe = Recipe.query.get(recipe_id)
+    if not recipe:
+        return jsonify({'error': 'Recipe not found'}), 404
+
+    # Update fields if provided
+    if 'name' in data:
+        recipe.name = data['name']
+    if 'description' in data:
+        recipe.description = data['description']
+    if 'cuisine_type' in data:
+        recipe.cuisine_type = data['cuisine_type']
+    if 'meal_type' in data:
+        recipe.meal_type = data['meal_type']
+    if 'difficulty_level' in data:
+        recipe.difficulty_level = data['difficulty_level']
+    if 'prep_time' in data:
+        recipe.prep_time = data['prep_time']
+    if 'cook_time' in data:
+        recipe.cook_time = data['cook_time']
+    if 'total_time' in data:
+        recipe.total_time = data['total_time']
+    if 'servings' in data:
+        recipe.servings = data['servings']
+    if 'instructions' in data:
+        recipe.instructions = data['instructions']
+    if 'calories' in data:
+        recipe.calories = data['calories']
+    if 'protein' in data:
+        recipe.protein = data['protein']
+    if 'carbohydrates' in data:
+        recipe.carbohydrates = data['carbohydrates']
+    if 'fat' in data:
+        recipe.fat = data['fat']
+    if 'fiber' in data:
+        recipe.fiber = data['fiber']
+    if 'is_vegetarian' in data:
+        recipe.is_vegetarian = data['is_vegetarian']
+    if 'is_vegan' in data:
+        recipe.is_vegan = data['is_vegan']
+    if 'is_gluten_free' in data:
+        recipe.is_gluten_free = data['is_gluten_free']
+    if 'is_dairy_free' in data:
+        recipe.is_dairy_free = data['is_dairy_free']
+    if 'image_url' in data:
+        recipe.image_url = data['image_url']
+
+    db.session.commit()
+
+    return jsonify({
+        'message': 'Recipe updated successfully',
+        'recipe': recipe.to_dict()
+    }), 200
+
+
+@recipes_bp.route('/<int:recipe_id>', methods=['DELETE'])
+@jwt_required()
+def delete_recipe(recipe_id):
+    """Delete a recipe"""
+    recipe = Recipe.query.get(recipe_id)
+    if not recipe:
+        return jsonify({'error': 'Recipe not found'}), 404
+
+    # Delete associated recipe ingredients first
+    RecipeIngredient.query.filter_by(recipe_id=recipe_id).delete()
+
+    db.session.delete(recipe)
+    db.session.commit()
+
+    return jsonify({'message': 'Recipe deleted successfully'}), 200
+
+
 @recipes_bp.route('/<int:recipe_id>/rate', methods=['POST'])
 @jwt_required()
 def rate_recipe(recipe_id):

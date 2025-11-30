@@ -1,6 +1,5 @@
-from flask import request, jsonify, url_for, send_file
+from flask import request, jsonify, send_file
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from werkzeug.utils import secure_filename
 import os
 from app import db
 from app.models import User, UserPreference, MealPlan, ShoppingList
@@ -74,7 +73,8 @@ def upload_profile_photo():
         return jsonify({'error': 'Invalid file type. Allowed: png, jpg, jpeg, gif, webp'}), 400
 
     # Create uploads directory if it doesn't exist
-    upload_folder = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'uploads', 'profile_photos')
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    upload_folder = os.path.join(base_dir, 'uploads', 'profile_photos')
     os.makedirs(upload_folder, exist_ok=True)
 
     # Generate secure filename with user ID
@@ -86,8 +86,8 @@ def upload_profile_photo():
     if user.profile_photo and os.path.exists(user.profile_photo):
         try:
             os.remove(user.profile_photo)
-        except:
-            pass
+        except Exception:
+            pass  # Ignore errors when deleting old photo
 
     # Save new photo
     file.save(filepath)

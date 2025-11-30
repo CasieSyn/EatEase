@@ -9,10 +9,10 @@ class ApiConfig {
   // Uncomment the network you're currently using:
 
   // HOME INTERNET
-  // ignore: unused_field
-  static const String _homeIp = '192.168.1.199:5000';
+  static const String _homeIp = '192.168.0.101:5000';  // Updated for new WiFi
 
-  // WORK INTERNET
+  // WORK INTERNET (old)
+  // ignore: unused_field
   static const String _workIp = '192.168.1.218:5000';
 
   // ANDROID EMULATOR (use this for Android emulator)
@@ -20,7 +20,7 @@ class ApiConfig {
   static const String _emulatorIp = '10.0.2.2:5000';
 
   // Current network - CHANGE THIS LINE WHEN SWITCHING NETWORKS
-  static const String _currentNetwork = _workIp;  // Change to _homeIp or _workIp as needed
+  static const String _currentNetwork = _homeIp;  // Using new WiFi IP
 
   // ========================================
 

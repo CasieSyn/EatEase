@@ -4,8 +4,7 @@ Uses YOLO model to detect ingredients from images
 """
 
 import os
-from typing import List, Dict, Tuple, Optional
-import numpy as np
+from typing import List, Dict, Optional
 from ultralytics import YOLO
 from .image_preprocessor import ImagePreprocessor
 
@@ -14,35 +13,66 @@ class IngredientDetector:
     """Handles ingredient detection using YOLO model"""
 
     # Mapping of YOLO COCO classes to Filipino ingredients
-    # Based on the ingredients in our database
+    # YOLO COCO dataset has 80 classes - only these food items are detectable:
+    # apple, banana, orange, broccoli, carrot, hot dog, pizza, donut, cake, sandwich
+    # Note: COCO doesn't have tomato, onion, garlic, meat etc. - those need a food-specific model
     YOLO_TO_INGREDIENT = {
-        # Proteins
-        'chicken': 'Chicken Breast',
-        'beef': 'Pork Belly',  # We'll map beef to pork for Filipino context
-        'fish': 'Tilapia',
-        'egg': 'Eggs',
-        'shrimp': 'Shrimp',
+        # Direct food mappings (keep it accurate, not guessing)
+        'apple': 'Apple',  # If we have apple in DB, otherwise None
+        'banana': 'Banana',  # If we have banana in DB, otherwise None
+        'orange': 'Tomato',  # Round red items often detected as orange -> likely tomato
+        'broccoli': 'Broccoli',  # Or map to Cabbage if no broccoli
+        'carrot': 'Carrot',
+        'hot dog': None,  # Skip - not a Filipino ingredient
+        'pizza': None,  # Skip
+        'donut': None,  # Skip
+        'cake': None,  # Skip
+        'sandwich': 'Bread',
 
-        # Vegetables
-        'carrot': 'Carrots',
-        'cabbage': 'Cabbage',
-        'eggplant': 'Eggplant (Talong)',
-        'tomato': 'Tomatoes',
-        'onion': 'Onions',
-        'garlic': 'Garlic',
-        'ginger': 'Ginger',
-        'potato': 'Potatoes',
-        'spinach': 'Kangkong',  # Map spinach to kangkong
-        'broccoli': 'String Beans (Sitaw)',  # Map to available veggie
+        # Container items - DON'T map these to ingredients (causes wrong detections)
+        'bottle': None,  # Could be anything
+        'wine glass': None,
+        'cup': None,  # Don't assume contents
+        'bowl': None,  # Don't assume contents - THIS was causing Rice detection!
 
-        # Grains & Carbs
-        'rice': 'White Rice',
-        'noodles': 'Noodles',
+        # Kitchen items - skip
+        'dining table': None,
+        'fork': None,
+        'knife': None,
+        'spoon': None,
+        'oven': None,
+        'sink': None,
+        'refrigerator': None,
+        'microwave': None,
+        'toaster': None,
 
-        # Condiments (less likely to be detected, but included)
-        'soy sauce': 'Soy Sauce',
-        'vinegar': 'Vinegar',
-        'oil': 'Cooking Oil',
+        # Non-food items - skip all
+        'person': None,
+        'bird': None,  # Don't map bird to chicken - too inaccurate
+        'dog': None,
+        'cat': None,
+        'potted plant': None,  # Don't guess
+        'backpack': None,
+        'umbrella': None,
+        'handbag': None,
+        'tie': None,
+        'suitcase': None,
+        'chair': None,
+        'couch': None,
+        'bed': None,
+        'tv': None,
+        'laptop': None,
+        'mouse': None,
+        'remote': None,
+        'keyboard': None,
+        'cell phone': None,
+        'book': None,
+        'clock': None,
+        'vase': None,
+        'scissors': None,
+        'teddy bear': None,
+        'hair drier': None,
+        'toothbrush': None,
     }
 
     def __init__(self, model_path: str = 'models/yolov8n.pt', confidence_threshold: float = 0.5):
@@ -166,7 +196,7 @@ class IngredientDetector:
             results: YOLO detection results
 
         Returns:
-            List of detected ingredients
+            List of detected ingredients (includes ALL detections with mapping info)
         """
         detections = []
 
@@ -182,19 +212,18 @@ class IngredientDetector:
                     class_id = int(box.cls[0])
                     class_name = result.names[class_id].lower()
 
-                    # Map to Filipino ingredient
-                    ingredient_name = self._map_to_ingredient(class_name)
-                    if ingredient_name is None:
-                        continue  # Skip if not a known ingredient
-
                     # Get confidence
                     confidence = float(box.conf[0])
 
                     # Get bounding box coordinates
                     bbox = box.xyxy[0].tolist()  # [x1, y1, x2, y2]
 
+                    # Map to Filipino ingredient
+                    ingredient_name = self._map_to_ingredient(class_name)
+
+                    # Include ALL detections (even unmapped ones) for debugging
                     detections.append({
-                        'name': ingredient_name,
+                        'name': ingredient_name,  # May be None if not mapped
                         'confidence': confidence,
                         'bbox': bbox,
                         'yolo_class': class_name

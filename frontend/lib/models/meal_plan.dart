@@ -31,11 +31,11 @@ class MealPlan {
 
   factory MealPlan.fromJson(Map<String, dynamic> json) {
     return MealPlan(
-      id: json['id'] as int,
-      userId: json['user_id'] as int,
-      recipeId: json['recipe_id'] as int,
-      plannedDate: json['planned_date'] as String,
-      mealType: json['meal_type'] as String,
+      id: json['id'] as int? ?? 0,
+      userId: json['user_id'] as int? ?? 0,
+      recipeId: json['recipe_id'] as int? ?? 0,
+      plannedDate: json['planned_date'] as String? ?? '',
+      mealType: json['meal_type'] as String? ?? '',
       isCompleted: json['is_completed'] as bool? ?? false,
       completedAt: json['completed_at'] as String?,
       userRating: json['user_rating'] as int?,

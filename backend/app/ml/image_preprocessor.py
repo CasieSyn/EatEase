@@ -5,7 +5,6 @@ Handles image loading, resizing, normalization, and augmentation for ML models
 
 import cv2
 import numpy as np
-from PIL import Image
 import os
 from typing import Tuple, Optional
 

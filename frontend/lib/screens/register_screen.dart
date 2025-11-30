@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../main.dart';
 import '../services/auth_provider.dart';
 import 'home_screen.dart';
 
@@ -56,7 +57,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(authProvider.error ?? 'Registration failed'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
     }
@@ -66,9 +69,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Register'),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
+        leading: Container(
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceVariant,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ),
+        title: const Text('Create Account'),
       ),
       body: SafeArea(
         child: Center(
@@ -79,9 +91,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // Logo icon
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: AppColors.secondary.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.person_add_rounded,
+                      size: 56,
+                      color: AppColors.secondary,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
                   // Title
                   Text(
-                    'Create Account',
+                    'Join EatEase',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -89,9 +116,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Join EatEase and start your meal planning journey',
+                    'Start your AI-powered meal planning journey',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey,
+                          color: AppColors.onSurfaceVariant,
                         ),
                     textAlign: TextAlign.center,
                   ),
@@ -101,11 +128,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'Email *',
+                    decoration: InputDecoration(
+                      labelText: 'Email',
                       hintText: 'Enter your email',
-                      prefixIcon: Icon(Icons.email),
-                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.email_outlined, color: AppColors.onSurfaceVariant),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -122,11 +148,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   // Full name field (optional)
                   TextFormField(
                     controller: _fullNameController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Full Name (optional)',
                       hintText: 'Enter your full name',
-                      prefixIcon: Icon(Icons.person),
-                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.person_outline, color: AppColors.onSurfaceVariant),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -135,11 +160,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   TextFormField(
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Phone (optional)',
                       hintText: 'Enter your phone number',
-                      prefixIcon: Icon(Icons.phone),
-                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.phone_outlined, color: AppColors.onSurfaceVariant),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -149,14 +173,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     controller: _passwordController,
                     obscureText: _obscurePassword,
                     decoration: InputDecoration(
-                      labelText: 'Password *',
+                      labelText: 'Password',
                       hintText: 'Enter your password',
-                      prefixIcon: const Icon(Icons.lock),
+                      prefixIcon: Icon(Icons.lock_outline, color: AppColors.onSurfaceVariant),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword
-                              ? Icons.visibility_off
-                              : Icons.visibility,
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          color: AppColors.onSurfaceVariant,
                         ),
                         onPressed: () {
                           setState(() {
@@ -164,7 +189,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           });
                         },
                       ),
-                      border: const OutlineInputBorder(),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -183,14 +207,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     controller: _confirmPasswordController,
                     obscureText: _obscureConfirmPassword,
                     decoration: InputDecoration(
-                      labelText: 'Confirm Password *',
+                      labelText: 'Confirm Password',
                       hintText: 'Re-enter your password',
-                      prefixIcon: const Icon(Icons.lock_outline),
+                      prefixIcon: Icon(Icons.lock_outline, color: AppColors.onSurfaceVariant),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscureConfirmPassword
-                              ? Icons.visibility_off
-                              : Icons.visibility,
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          color: AppColors.onSurfaceVariant,
                         ),
                         onPressed: () {
                           setState(() {
@@ -198,7 +223,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           });
                         },
                       ),
-                      border: const OutlineInputBorder(),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
@@ -210,21 +234,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
 
                   // Register button
                   Consumer<AuthProvider>(
                     builder: (context, authProvider, child) {
                       return ElevatedButton(
                         onPressed: authProvider.isLoading ? null : _handleRegister,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
                         child: authProvider.isLoading
                             ? const SizedBox(
                                 height: 20,
@@ -236,31 +252,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   ),
                                 ),
                               )
-                            : const Text(
-                                'Register',
-                                style: TextStyle(fontSize: 16),
-                              ),
+                            : const Text('Create Account'),
                       );
                     },
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
 
                   // Login link
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text('Already have an account? '),
+                      Text(
+                        'Already have an account? ',
+                        style: TextStyle(color: AppColors.onSurfaceVariant),
+                      ),
                       TextButton(
                         onPressed: () {
                           Navigator.of(context).pop();
                         },
-                        child: const Text(
-                          'Login',
-                          style: TextStyle(
-                            color: Colors.green,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        child: const Text('Sign In'),
                       ),
                     ],
                   ),

@@ -24,6 +24,9 @@ class Config:
     YOLO_MODEL_PATH = os.getenv('YOLO_MODEL_PATH', 'models/yolov8n.pt')
     YOLO_CONFIDENCE_THRESHOLD = float(os.getenv('YOLO_CONFIDENCE_THRESHOLD', 0.5))
 
+    # Google Cloud Vision
+    GOOGLE_VISION_CREDENTIALS = os.getenv('GOOGLE_VISION_CREDENTIALS', 'credentials/google-vision.json')
+
     # AWS Configuration
     AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
     AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
