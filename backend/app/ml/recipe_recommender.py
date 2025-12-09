@@ -5,7 +5,7 @@ Provides intelligent recipe recommendations based on user preferences and histor
 
 from typing import List, Dict, Optional
 from datetime import datetime, timedelta
-from app.models import Recipe, UserPreference, MealPlan, RecipeIngredient, Ingredient
+from app.models import Recipe, UserPreference, MealPlan, RecipeIngredient, Ingredient, UserPantry
 from app import db
 
 
@@ -20,18 +20,20 @@ class RecipeRecommender:
         self,
         user_id: int,
         available_ingredients: Optional[List[str]] = None,
-        limit: int = 10
+        limit: int = 10,
+        use_pantry: bool = True
     ) -> List[Dict]:
         """
-        Recommend recipes for a user based on preferences and history
+        Recommend recipes for a user based on preferences, history, and pantry
 
         Args:
             user_id: User ID
-            available_ingredients: List of available ingredient names
+            available_ingredients: List of available ingredient names (overrides pantry if provided)
             limit: Maximum number of recommendations
+            use_pantry: Whether to use user's pantry ingredients (default True)
 
         Returns:
-            List of recommended recipes with scores
+            List of recommended recipes with scores and match info
         """
         # Get user preferences
         preferences = UserPreference.query.filter_by(user_id=user_id).first()
@@ -41,6 +43,10 @@ class RecipeRecommender:
 
         # Get user's highly rated recipes
         favorite_recipes = self._get_favorite_recipes(user_id)
+
+        # Get available ingredients from pantry if not provided
+        if available_ingredients is None and use_pantry:
+            available_ingredients = self._get_pantry_ingredients(user_id)
 
         # Start with all recipes
         query = Recipe.query
@@ -61,6 +67,9 @@ class RecipeRecommender:
         # Score each recipe
         scored_recipes = []
         for recipe in recipes:
+            # Calculate ingredient match details
+            match_info = self._calculate_ingredient_match_details(recipe, available_ingredients)
+
             score = self._calculate_recipe_score(
                 recipe=recipe,
                 user_id=user_id,
@@ -70,9 +79,17 @@ class RecipeRecommender:
                 preferences=preferences
             )
 
+            recipe_dict = recipe.to_dict()
+            # Add match info to recipe
+            recipe_dict['match_percentage'] = match_info['match_percentage']
+            recipe_dict['matching_ingredients'] = match_info['matching_count']
+            recipe_dict['total_ingredients'] = match_info['total_count']
+            recipe_dict['missing_ingredients'] = match_info['missing_ingredients']
+
             scored_recipes.append({
-                'recipe': recipe.to_dict(),
+                'recipe': recipe_dict,
                 'score': score,
+                'match_info': match_info,
                 'reasoning': self._get_recommendation_reasoning(
                     recipe, score, available_ingredients, recent_meals
                 )
@@ -83,6 +100,82 @@ class RecipeRecommender:
 
         # Return top N
         return scored_recipes[:limit]
+
+    def _get_pantry_ingredients(self, user_id: int) -> List[str]:
+        """
+        Get ingredient names from user's pantry
+
+        Args:
+            user_id: User ID
+
+        Returns:
+            List of ingredient names
+        """
+        pantry_items = db.session.query(Ingredient.name).join(
+            UserPantry
+        ).filter(
+            UserPantry.user_id == user_id
+        ).all()
+
+        return [item[0] for item in pantry_items]
+
+    def _calculate_ingredient_match_details(
+        self,
+        recipe: Recipe,
+        available_ingredients: Optional[List[str]]
+    ) -> Dict:
+        """
+        Calculate detailed ingredient match information
+
+        Args:
+            recipe: Recipe object
+            available_ingredients: List of ingredient names
+
+        Returns:
+            Dict with match details
+        """
+        # Get recipe ingredients
+        recipe_ingredients = db.session.query(
+            Ingredient.id,
+            Ingredient.name,
+            RecipeIngredient.is_optional
+        ).join(
+            RecipeIngredient
+        ).filter(
+            RecipeIngredient.recipe_id == recipe.id
+        ).all()
+
+        if not available_ingredients:
+            return {
+                'match_percentage': 0,
+                'matching_count': 0,
+                'total_count': len(recipe_ingredients),
+                'matching_ingredients': [],
+                'missing_ingredients': [{'id': ing[0], 'name': ing[1], 'is_optional': ing[2]} for ing in recipe_ingredients]
+            }
+
+        available_set = {ing.lower() for ing in available_ingredients}
+
+        matching = []
+        missing = []
+
+        for ing_id, ing_name, is_optional in recipe_ingredients:
+            if ing_name.lower() in available_set:
+                matching.append({'id': ing_id, 'name': ing_name, 'is_optional': is_optional})
+            else:
+                missing.append({'id': ing_id, 'name': ing_name, 'is_optional': is_optional})
+
+        total = len(recipe_ingredients)
+        match_count = len(matching)
+        match_percentage = (match_count / total * 100) if total > 0 else 0
+
+        return {
+            'match_percentage': round(match_percentage, 1),
+            'matching_count': match_count,
+            'total_count': total,
+            'matching_ingredients': matching,
+            'missing_ingredients': missing
+        }
 
     def _calculate_recipe_score(
         self,
@@ -254,9 +347,9 @@ class RecipeRecommender:
         if available_ingredients:
             match_pct = self._calculate_ingredient_match(recipe, available_ingredients)
             if match_pct >= 0.8:
-                reasons.append(f"Great match with your ingredients ({int(match_pct*100)}%)")
+                reasons.append(f"Great match with your ingredients ({int(match_pct * 100)}%)")
             elif match_pct >= 0.5:
-                reasons.append(f"Good match with your ingredients ({int(match_pct*100)}%)")
+                reasons.append(f"Good match with your ingredients ({int(match_pct * 100)}%)")
 
         # Rating
         if recipe.rating and recipe.rating >= 4.0:

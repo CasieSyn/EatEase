@@ -2,7 +2,7 @@ from flask import request, jsonify, send_file
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import os
 from app import db
-from app.models import User, UserPreference, MealPlan, ShoppingList
+from app.models import User, UserPreference, MealPlan, ShoppingList, UserPantry, Ingredient
 from app.api import users_bp
 
 
@@ -430,3 +430,194 @@ def delete_shopping_list(list_id):
     db.session.commit()
 
     return jsonify({'message': 'Shopping list deleted successfully'}), 200
+
+
+# ============== PANTRY ENDPOINTS ==============
+
+@users_bp.route('/pantry', methods=['GET'])
+@jwt_required()
+def get_pantry():
+    """Get user's pantry (available ingredients)"""
+    user_id = int(get_jwt_identity())
+
+    pantry_items = UserPantry.query.filter_by(user_id=user_id).all()
+
+    return jsonify({
+        'pantry': [item.to_dict() for item in pantry_items],
+        'count': len(pantry_items)
+    }), 200
+
+
+@users_bp.route('/pantry', methods=['POST'])
+@jwt_required()
+def add_to_pantry():
+    """Add ingredient(s) to user's pantry"""
+    user_id = int(get_jwt_identity())
+    data = request.get_json()
+
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+
+    # Support both single ingredient and batch add
+    ingredients = data.get('ingredients', [])
+    if not ingredients and data.get('ingredient_id'):
+        ingredients = [data]
+
+    if not ingredients:
+        return jsonify({'error': 'No ingredients provided'}), 400
+
+    added = []
+    updated = []
+    errors = []
+
+    for ing_data in ingredients:
+        ingredient_id = ing_data.get('ingredient_id')
+
+        if not ingredient_id:
+            errors.append({'error': 'ingredient_id is required', 'data': ing_data})
+            continue
+
+        # Verify ingredient exists
+        ingredient = Ingredient.query.get(ingredient_id)
+        if not ingredient:
+            errors.append({'error': f'Ingredient {ingredient_id} not found', 'data': ing_data})
+            continue
+
+        # Check if already in pantry
+        existing = UserPantry.query.filter_by(
+            user_id=user_id,
+            ingredient_id=ingredient_id
+        ).first()
+
+        if existing:
+            # Update existing entry
+            if 'quantity' in ing_data:
+                existing.quantity = ing_data['quantity']
+            if 'unit' in ing_data:
+                existing.unit = ing_data['unit']
+            if 'expiry_date' in ing_data:
+                existing.expiry_date = ing_data['expiry_date']
+            updated.append(existing.to_dict())
+        else:
+            # Add new entry
+            pantry_item = UserPantry(
+                user_id=user_id,
+                ingredient_id=ingredient_id,
+                quantity=ing_data.get('quantity'),
+                unit=ing_data.get('unit'),
+                expiry_date=ing_data.get('expiry_date')
+            )
+            db.session.add(pantry_item)
+            added.append(pantry_item)
+
+    db.session.commit()
+
+    # Convert added items to dict after commit (to get IDs)
+    added_dicts = [item.to_dict() for item in added]
+
+    return jsonify({
+        'message': f'Added {len(added_dicts)} items, updated {len(updated)} items',
+        'added': added_dicts,
+        'updated': updated,
+        'errors': errors if errors else None
+    }), 201
+
+
+@users_bp.route('/pantry/<int:pantry_id>', methods=['PUT'])
+@jwt_required()
+def update_pantry_item(pantry_id):
+    """Update a pantry item"""
+    user_id = int(get_jwt_identity())
+    pantry_item = UserPantry.query.filter_by(id=pantry_id, user_id=user_id).first()
+
+    if not pantry_item:
+        return jsonify({'error': 'Pantry item not found'}), 404
+
+    data = request.get_json()
+
+    if 'quantity' in data:
+        pantry_item.quantity = data['quantity']
+    if 'unit' in data:
+        pantry_item.unit = data['unit']
+    if 'expiry_date' in data:
+        pantry_item.expiry_date = data['expiry_date']
+
+    db.session.commit()
+
+    return jsonify({
+        'message': 'Pantry item updated successfully',
+        'pantry_item': pantry_item.to_dict()
+    }), 200
+
+
+@users_bp.route('/pantry/<int:pantry_id>', methods=['DELETE'])
+@jwt_required()
+def remove_from_pantry(pantry_id):
+    """Remove an ingredient from user's pantry"""
+    user_id = int(get_jwt_identity())
+    pantry_item = UserPantry.query.filter_by(id=pantry_id, user_id=user_id).first()
+
+    if not pantry_item:
+        return jsonify({'error': 'Pantry item not found'}), 404
+
+    db.session.delete(pantry_item)
+    db.session.commit()
+
+    return jsonify({'message': 'Item removed from pantry'}), 200
+
+
+@users_bp.route('/pantry/ingredient/<int:ingredient_id>', methods=['DELETE'])
+@jwt_required()
+def remove_ingredient_from_pantry(ingredient_id):
+    """Remove an ingredient from pantry by ingredient ID"""
+    user_id = int(get_jwt_identity())
+    pantry_item = UserPantry.query.filter_by(
+        user_id=user_id,
+        ingredient_id=ingredient_id
+    ).first()
+
+    if not pantry_item:
+        return jsonify({'error': 'Ingredient not in pantry'}), 404
+
+    db.session.delete(pantry_item)
+    db.session.commit()
+
+    return jsonify({'message': 'Ingredient removed from pantry'}), 200
+
+
+@users_bp.route('/pantry/clear', methods=['DELETE'])
+@jwt_required()
+def clear_pantry():
+    """Clear all items from user's pantry"""
+    user_id = int(get_jwt_identity())
+
+    deleted_count = UserPantry.query.filter_by(user_id=user_id).delete()
+    db.session.commit()
+
+    return jsonify({
+        'message': f'Cleared {deleted_count} items from pantry'
+    }), 200
+
+
+@users_bp.route('/pantry/bulk', methods=['DELETE'])
+@jwt_required()
+def bulk_remove_from_pantry():
+    """Remove multiple ingredients from pantry"""
+    user_id = int(get_jwt_identity())
+    data = request.get_json()
+
+    if not data or not data.get('ingredient_ids'):
+        return jsonify({'error': 'ingredient_ids array is required'}), 400
+
+    ingredient_ids = data['ingredient_ids']
+
+    deleted_count = UserPantry.query.filter(
+        UserPantry.user_id == user_id,
+        UserPantry.ingredient_id.in_(ingredient_ids)
+    ).delete(synchronize_session=False)
+
+    db.session.commit()
+
+    return jsonify({
+        'message': f'Removed {deleted_count} items from pantry'
+    }), 200

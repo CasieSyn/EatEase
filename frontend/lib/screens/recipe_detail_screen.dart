@@ -121,11 +121,29 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
         _recipe = recipe;
         _isLoading = false;
       });
+
+      // If recipe has no image, try to fetch one
+      if (recipe.imageUrl == null || recipe.imageUrl!.isEmpty) {
+        _fetchRecipeImage();
+      }
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _fetchRecipeImage() async {
+    try {
+      final imageUrl = await _recipeService.fetchRecipeImage(widget.recipeId);
+      if (imageUrl != null && mounted) {
+        setState(() {
+          _recipe = _recipe!.copyWith(imageUrl: imageUrl);
+        });
+      }
+    } catch (e) {
+      // Silently fail - image fetching is optional
     }
   }
 

@@ -97,6 +97,54 @@ class Recipe {
       'ingredients': ingredients?.map((e) => e.toJson()).toList(),
     };
   }
+
+  Recipe copyWith({
+    int? id,
+    String? name,
+    String? description,
+    String? cuisineType,
+    String? mealType,
+    String? difficultyLevel,
+    RecipeTime? time,
+    int? servings,
+    List<String>? instructions,
+    Nutrition? nutrition,
+    Dietary? dietary,
+    String? imageUrl,
+    String? videoUrl,
+    double? rating,
+    int? ratingCount,
+    int? viewCount,
+    String? createdAt,
+    List<RecipeIngredient>? ingredients,
+    double? matchPercentage,
+    int? matchingIngredients,
+    int? totalIngredients,
+  }) {
+    return Recipe(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      cuisineType: cuisineType ?? this.cuisineType,
+      mealType: mealType ?? this.mealType,
+      difficultyLevel: difficultyLevel ?? this.difficultyLevel,
+      time: time ?? this.time,
+      servings: servings ?? this.servings,
+      instructions: instructions ?? this.instructions,
+      nutrition: nutrition ?? this.nutrition,
+      dietary: dietary ?? this.dietary,
+      imageUrl: imageUrl ?? this.imageUrl,
+      videoUrl: videoUrl ?? this.videoUrl,
+      rating: rating ?? this.rating,
+      ratingCount: ratingCount ?? this.ratingCount,
+      viewCount: viewCount ?? this.viewCount,
+      createdAt: createdAt ?? this.createdAt,
+      ingredients: ingredients ?? this.ingredients,
+      matchPercentage: matchPercentage ?? this.matchPercentage,
+      matchingIngredients: matchingIngredients ?? this.matchingIngredients,
+      totalIngredients: totalIngredients ?? this.totalIngredients,
+    );
+  }
 }
 
 class RecipeTime {

@@ -19,19 +19,8 @@ class _RecipesScreenState extends State<RecipesScreen> {
   bool _isLoading = false;
   bool _isLoadingRecommendations = false;
   String? _errorMessage;
-  String? _selectedCuisine;
   String? _selectedMealType;
-
-  final List<String> _cuisineTypes = [
-    'All',
-    'Filipino',
-    'Italian',
-    'Chinese',
-    'Japanese',
-    'Mexican',
-    'Thai',
-    'Indian',
-  ];
+  final Set<int> _fetchingImages = {}; // Track which recipes are fetching images
 
   final List<String> _mealTypes = [
     'All',
@@ -59,11 +48,51 @@ class _RecipesScreenState extends State<RecipesScreen> {
         _recommendations = recommendations;
         _isLoadingRecommendations = false;
       });
+      // Fetch images for recommendations without images
+      _fetchMissingImages(recommendations, isRecommendation: true);
     } catch (e) {
       // Silently fail - recommendations are optional
       setState(() {
         _isLoadingRecommendations = false;
       });
+    }
+  }
+
+  Future<void> _fetchMissingImages(List<Recipe> recipes, {bool isRecommendation = false}) async {
+    for (final recipe in recipes) {
+      if ((recipe.imageUrl == null || recipe.imageUrl!.isEmpty) && !_fetchingImages.contains(recipe.id)) {
+        _fetchingImages.add(recipe.id);
+        _fetchImageForRecipe(recipe.id, isRecommendation: isRecommendation);
+      }
+    }
+  }
+
+  Future<void> _fetchImageForRecipe(int recipeId, {bool isRecommendation = false}) async {
+    try {
+      final imageUrl = await _recipeService.fetchRecipeImage(recipeId);
+      if (imageUrl != null && mounted) {
+        setState(() {
+          if (isRecommendation) {
+            _recommendations = _recommendations.map((r) {
+              if (r.id == recipeId) {
+                return r.copyWith(imageUrl: imageUrl);
+              }
+              return r;
+            }).toList();
+          } else {
+            _recipes = _recipes.map((r) {
+              if (r.id == recipeId) {
+                return r.copyWith(imageUrl: imageUrl);
+              }
+              return r;
+            }).toList();
+          }
+        });
+      }
+    } catch (e) {
+      // Silently fail
+    } finally {
+      _fetchingImages.remove(recipeId);
     }
   }
 
@@ -75,7 +104,6 @@ class _RecipesScreenState extends State<RecipesScreen> {
 
     try {
       final recipes = await _recipeService.getRecipes(
-        cuisineType: _selectedCuisine != null && _selectedCuisine != 'All' ? _selectedCuisine : null,
         mealType: _selectedMealType != null && _selectedMealType != 'All' ? _selectedMealType : null,
       );
 
@@ -83,6 +111,8 @@ class _RecipesScreenState extends State<RecipesScreen> {
         _recipes = recipes;
         _isLoading = false;
       });
+      // Fetch images for recipes without images
+      _fetchMissingImages(recipes, isRecommendation: false);
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();
@@ -133,7 +163,7 @@ class _RecipesScreenState extends State<RecipesScreen> {
                       ),
                     ),
                     Text(
-                      'Based on your preferences',
+                      'Based on your pantry ingredients',
                       style: TextStyle(
                         color: AppColors.onSurfaceVariant,
                         fontSize: 12,
@@ -182,6 +212,46 @@ class _RecipesScreenState extends State<RecipesScreen> {
     );
   }
 
+  Widget _buildPlaceholderImage(double height) {
+    return Container(
+      height: height,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.primary.withValues(alpha: 0.15),
+            AppColors.secondary.withValues(alpha: 0.15),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.restaurant_menu_rounded,
+              size: height * 0.35,
+              color: AppColors.primary.withValues(alpha: 0.5),
+            ),
+            if (height > 100) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Filipino Cuisine',
+                style: TextStyle(
+                  color: AppColors.primary.withValues(alpha: 0.6),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildRecommendationCard(Recipe recipe) {
     return GestureDetector(
       onTap: () {
@@ -221,45 +291,69 @@ class _RecipesScreenState extends State<RecipesScreen> {
                           width: double.infinity,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              height: 100,
-                              color: AppColors.surfaceVariant,
-                              child: const Icon(Icons.restaurant, size: 40),
-                            );
+                            return _buildPlaceholderImage(100);
                           },
                         )
-                      : Container(
-                          height: 100,
-                          color: AppColors.surfaceVariant,
-                          child: const Icon(Icons.restaurant, size: 40),
+                      : _buildPlaceholderImage(100),
+                  // Match percentage badge
+                  if (recipe.matchPercentage != null && recipe.matchPercentage! > 0)
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: recipe.matchPercentage! >= 70
+                              ? AppColors.success
+                              : recipe.matchPercentage! >= 40
+                                  ? AppColors.accent
+                                  : AppColors.warning,
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                  // AI badge
-                  Positioned(
-                    top: 8,
-                    left: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppColors.accent,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.auto_awesome, size: 12, color: Colors.white),
-                          SizedBox(width: 4),
-                          Text(
-                            'AI Pick',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.check_circle, size: 12, color: Colors.white),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${recipe.matchPercentage!.toInt()}%',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.accent,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.auto_awesome, size: 12, color: Colors.white),
+                            SizedBox(width: 4),
+                            Text(
+                              'AI Pick',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -275,10 +369,21 @@ class _RecipesScreenState extends State<RecipesScreen> {
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
                     ),
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
+                  // Match info
+                  if (recipe.matchingIngredients != null && recipe.totalIngredients != null)
+                    Text(
+                      '${recipe.matchingIngredients}/${recipe.totalIngredients} ingredients',
+                      style: TextStyle(
+                        color: AppColors.success,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  const SizedBox(height: 6),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -351,52 +456,6 @@ class _RecipesScreenState extends State<RecipesScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Cuisine Type Filter
-              Row(
-                children: [
-                  Icon(Icons.public, size: 18, color: AppColors.onSurfaceVariant),
-                  const SizedBox(width: 8),
-                  Text('Cuisine', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.onSurface)),
-                ],
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 40,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _cuisineTypes.length,
-                  itemBuilder: (context, index) {
-                    final cuisine = _cuisineTypes[index];
-                    final isSelected = _selectedCuisine == cuisine || (_selectedCuisine == null && cuisine == 'All');
-
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: FilterChip(
-                        label: Text(cuisine),
-                        selected: isSelected,
-                        onSelected: (selected) {
-                          setState(() {
-                            _selectedCuisine = cuisine == 'All' ? null : cuisine;
-                          });
-                          _loadRecipes();
-                        },
-                        selectedColor: AppColors.primary,
-                        checkmarkColor: Colors.white,
-                        labelStyle: TextStyle(
-                          color: isSelected ? Colors.white : AppColors.onSurface,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                        ),
-                        backgroundColor: AppColors.surfaceVariant,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        side: BorderSide.none,
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 16),
               // Meal Type Filter
               Row(
                 children: [
@@ -620,36 +679,10 @@ class RecipeCard extends StatelessWidget {
                             width: double.infinity,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                height: 180,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      AppColors.primary.withValues(alpha: 0.3),
-                                      AppColors.secondary.withValues(alpha: 0.3),
-                                    ],
-                                  ),
-                                ),
-                                child: Icon(Icons.restaurant, size: 64, color: AppColors.onSurfaceVariant),
-                              );
+                              return _buildCardPlaceholder();
                             },
                           )
-                        : Container(
-                            height: 180,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  AppColors.primary.withValues(alpha: 0.3),
-                                  AppColors.secondary.withValues(alpha: 0.3),
-                                ],
-                              ),
-                            ),
-                            child: Icon(Icons.restaurant, size: 64, color: AppColors.onSurfaceVariant),
-                          ),
+                        : _buildCardPlaceholder(),
                   ),
                   // Gradient overlay
                   Positioned(
@@ -843,6 +876,44 @@ class RecipeCard extends StatelessWidget {
           color: color,
           fontSize: 12,
           fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCardPlaceholder() {
+    return Container(
+      height: 180,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.primary.withValues(alpha: 0.15),
+            AppColors.secondary.withValues(alpha: 0.15),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.restaurant_menu_rounded,
+              size: 64,
+              color: AppColors.primary.withValues(alpha: 0.5),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Filipino Cuisine',
+              style: TextStyle(
+                color: AppColors.primary.withValues(alpha: 0.6),
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       ),
     );

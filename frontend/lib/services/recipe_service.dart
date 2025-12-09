@@ -148,8 +148,18 @@ class RecipeService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final List<dynamic> recipesJson = data['recommendations'] as List;
-        return recipesJson.map((json) => Recipe.fromJson(json as Map<String, dynamic>)).toList();
+        final List<dynamic> recommendationsJson = data['recommendations'] as List;
+        return recommendationsJson.map((item) {
+          final recipeData = item['recipe'] as Map<String, dynamic>;
+          // Merge match_info into recipe data for display
+          if (item['match_info'] != null) {
+            final matchInfo = item['match_info'] as Map<String, dynamic>;
+            recipeData['match_percentage'] = matchInfo['match_percentage'];
+            recipeData['matching_ingredients'] = matchInfo['matching_count'];
+            recipeData['total_ingredients'] = matchInfo['total_count'];
+          }
+          return Recipe.fromJson(recipeData);
+        }).toList();
       } else if (response.statusCode == 401) {
         throw Exception('Unauthorized');
       } else {
@@ -432,6 +442,24 @@ class RecipeService {
       }
     } catch (e) {
       throw Exception('Error deleting recipe: $e');
+    }
+  }
+
+  /// Fetch image for a recipe using Google Custom Search
+  Future<String?> fetchRecipeImage(int recipeId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.recipeById(recipeId)}/image'),
+        headers: ApiConfig.headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['image_url'] as String?;
+      }
+      return null;
+    } catch (e) {
+      return null;
     }
   }
 }

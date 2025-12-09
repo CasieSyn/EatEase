@@ -385,3 +385,64 @@ def get_cuisine_recommendations(cuisine_type):
         'total': len(recommendations),
         'cuisine_type': cuisine_type
     }), 200
+
+
+@recipes_bp.route('/<int:recipe_id>/image', methods=['GET'])
+def get_recipe_image(recipe_id):
+    """Fetch an image for a recipe using Google Custom Search"""
+    from app.services.image_search_service import image_search_service
+
+    recipe = Recipe.query.get(recipe_id)
+    if not recipe:
+        return jsonify({'error': 'Recipe not found'}), 404
+
+    # If recipe already has an image, return it
+    if recipe.image_url:
+        return jsonify({'image_url': recipe.image_url}), 200
+
+    # Search for an image
+    image_url = image_search_service.search_food_image(
+        recipe.name,
+        cuisine_type=recipe.cuisine_type
+    )
+
+    if image_url:
+        # Save the image URL to the recipe
+        recipe.image_url = image_url
+        db.session.commit()
+        return jsonify({'image_url': image_url}), 200
+
+    return jsonify({'error': 'No image found', 'image_url': None}), 200
+
+
+@recipes_bp.route('/fetch-images', methods=['POST'])
+@jwt_required()
+def fetch_recipe_images():
+    """Fetch images for multiple recipes that don't have images"""
+    from app.services.image_search_service import image_search_service
+
+    data = request.get_json() or {}
+    limit = data.get('limit', 10)
+
+    # Get recipes without images
+    recipes_without_images = Recipe.query.filter(
+        (Recipe.image_url.is_(None)) | (Recipe.image_url == '')
+    ).limit(limit).all()
+
+    updated_count = 0
+    for recipe in recipes_without_images:
+        image_url = image_search_service.search_food_image(
+            recipe.name,
+            cuisine_type=recipe.cuisine_type
+        )
+        if image_url:
+            recipe.image_url = image_url
+            updated_count += 1
+
+    db.session.commit()
+
+    return jsonify({
+        'message': f'Updated {updated_count} recipes with images',
+        'updated_count': updated_count,
+        'total_processed': len(recipes_without_images)
+    }), 200

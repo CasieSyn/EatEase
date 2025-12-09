@@ -72,6 +72,13 @@ class ApiConfig {
   static String shoppingListById(int id) => '$baseUrl$users/shopping-lists/$id';
   static String get generateShoppingList => '$baseUrl$users/shopping-lists/generate';
 
+  // Pantry endpoints
+  static String get pantry => '$baseUrl$users/pantry';
+  static String pantryItemById(int id) => '$baseUrl$users/pantry/$id';
+  static String pantryByIngredientId(int ingredientId) => '$baseUrl$users/pantry/ingredient/$ingredientId';
+  static String get clearPantry => '$baseUrl$users/pantry/clear';
+  static String get bulkRemovePantry => '$baseUrl$users/pantry/bulk';
+
   // Request headers
   static Map<String, String> get headers => {
     'Content-Type': 'application/json',

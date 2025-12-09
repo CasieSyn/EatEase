@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../main.dart';
 import 'recipes_screen.dart';
-import 'ingredients_screen.dart';
+import 'pantry_screen.dart';
 import 'meal_plans_screen.dart';
 import 'shopping_lists_screen.dart';
 import 'profile_screen.dart';
@@ -19,14 +19,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final List<Widget> _screens = [
     const RecipesScreen(),
-    const IngredientsScreen(),
+    const PantryScreen(),
     const ShoppingListsScreen(),
     const MealPlansScreen(),
   ];
 
   final List<String> _titles = [
     'Recipes',
-    'Ingredients',
+    'My Pantry',
     'Shopping List',
     'Meal Plans',
   ];
@@ -129,7 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildNavItem(Icons.restaurant_menu_rounded, 'Recipes', 0),
-                _buildNavItem(Icons.egg_alt_rounded, 'Ingredients', 1),
+                _buildNavItem(Icons.kitchen_rounded, 'Pantry', 1),
                 const SizedBox(width: 72), // Space for FAB
                 _buildNavItem(Icons.shopping_bag_rounded, 'Shop', 2),
                 _buildNavItem(Icons.calendar_month_rounded, 'Plans', 3),
