@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'services/auth_provider.dart';
@@ -218,6 +219,20 @@ class EatEaseApp extends StatelessWidget {
             thickness: 1,
           ),
         ),
+        builder: (context, child) {
+          if (kIsWeb) {
+            return Container(
+              color: const Color(0xFFF0EBE3),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 430),
+                  child: child,
+                ),
+              ),
+            );
+          }
+          return child!;
+        },
         home: const SplashScreen(),
       ),
     );
