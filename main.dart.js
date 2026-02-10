@@ -31465,7 +31465,7 @@ case 2:return A.w2(A.b([A.G7(B.Du),A.acg()],t.mo),t.H)
 case 3:case 4:case 5:return A.de(null,t.H)}},
 b0R(){return $.b0Q.bA()},
 b0S(){return A.b0R()},
-dz(){return"http://localhost:5000"},
+dz(){return"https://eatease-api.onrender.com"},
 bbr(a,b,c){var s,r,q,p
 try{q=c.$0()
 return q}catch(p){q=A.a3(p)
