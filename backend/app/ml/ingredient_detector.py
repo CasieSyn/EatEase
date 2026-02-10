@@ -5,7 +5,14 @@ Uses YOLO model to detect ingredients from images
 
 import os
 from typing import List, Dict, Optional
-from ultralytics import YOLO
+
+try:
+    from ultralytics import YOLO
+    YOLO_AVAILABLE = True
+except ImportError:
+    YOLO = None
+    YOLO_AVAILABLE = False
+
 from .image_preprocessor import ImagePreprocessor
 
 

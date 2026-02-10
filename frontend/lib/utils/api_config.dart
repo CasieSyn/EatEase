@@ -6,6 +6,13 @@ class ApiConfig {
   // NETWORK CONFIGURATION - Easy switching
   // ========================================
 
+  // PRODUCTION URL (Render deployment)
+  // Pass via: flutter build web --dart-define=API_URL=https://your-app.onrender.com
+  static const String _productionUrl = String.fromEnvironment(
+    'API_URL',
+    defaultValue: '',
+  );
+
   // Uncomment the network you're currently using:
 
   // HOME INTERNET
@@ -26,6 +33,11 @@ class ApiConfig {
 
   // Base URL for the backend API
   static String get baseUrl {
+    // Use production URL if provided via --dart-define
+    if (_productionUrl.isNotEmpty) {
+      return _productionUrl;
+    }
+
     if (kIsWeb) {
       // Web platform (Chrome, Firefox, etc.)
       return 'http://localhost:5000';

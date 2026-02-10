@@ -3,7 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
 from app.models import Ingredient, DetectionFeedback
 from app.api import ingredients_bp
-from app.ml import IngredientDetector
+from app.ml import IngredientDetector, ML_AVAILABLE
 from app.ml.google_vision_detector import GoogleVisionDetector
 import os
 
@@ -15,6 +15,8 @@ vision_detector = None
 def get_yolo_detector():
     """Lazy load YOLO detector instance"""
     global yolo_detector
+    if not ML_AVAILABLE or IngredientDetector is None:
+        return None
     if yolo_detector is None:
         model_path = current_app.config.get('YOLO_MODEL_PATH', 'models/yolov8n.pt')
         confidence = current_app.config.get('YOLO_CONFIDENCE_THRESHOLD', 0.5)
@@ -122,10 +124,11 @@ def detect_ingredients():
         # Fallback to YOLO if Google Vision didn't find anything
         if not all_detections:
             yolo_det = get_yolo_detector()
-            yolo_detections = yolo_det.detect_from_bytes(image_bytes)
-            # Filter to only mapped detections
-            all_detections = [d for d in yolo_detections if d.get('name') is not None]
-            detection_source = 'yolo' if all_detections else 'none'
+            if yolo_det is not None:
+                yolo_detections = yolo_det.detect_from_bytes(image_bytes)
+                # Filter to only mapped detections
+                all_detections = [d for d in yolo_detections if d.get('name') is not None]
+                detection_source = 'yolo' if all_detections else 'none'
 
         # Extract ingredient names (filter None values)
         ingredient_names = list(set([d['name'] for d in all_detections if d.get('name')]))

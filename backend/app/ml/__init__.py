@@ -3,8 +3,15 @@ ML Module for EatEase
 Handles ingredient detection, image preprocessing, and recipe recommendations
 """
 
-from .ingredient_detector import IngredientDetector
-from .image_preprocessor import ImagePreprocessor
 from .recipe_recommender import RecipeRecommender
 
-__all__ = ['IngredientDetector', 'ImagePreprocessor', 'RecipeRecommender']
+try:
+    from .ingredient_detector import IngredientDetector
+    from .image_preprocessor import ImagePreprocessor
+    ML_AVAILABLE = True
+except ImportError:
+    IngredientDetector = None
+    ImagePreprocessor = None
+    ML_AVAILABLE = False
+
+__all__ = ['IngredientDetector', 'ImagePreprocessor', 'RecipeRecommender', 'ML_AVAILABLE']

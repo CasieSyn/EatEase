@@ -3,10 +3,17 @@ Image Preprocessing Module
 Handles image loading, resizing, normalization, and augmentation for ML models
 """
 
-import cv2
-import numpy as np
 import os
 from typing import Tuple, Optional
+
+try:
+    import cv2
+    import numpy as np
+    CV2_AVAILABLE = True
+except ImportError:
+    cv2 = None
+    np = None
+    CV2_AVAILABLE = False
 
 
 class ImagePreprocessor:
