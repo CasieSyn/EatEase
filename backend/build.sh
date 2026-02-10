@@ -5,14 +5,18 @@ set -o errexit
 # Install dependencies (lightweight, no ML)
 pip install -r requirements-render.txt
 
-# Run database migrations
+# Run database migrations (create tables on fresh DB)
 python -c "
 from app import create_app, db
 from flask_migrate import upgrade
 
 app = create_app('production')
 with app.app_context():
-    upgrade()
+    try:
+        upgrade()
+    except Exception as e:
+        print(f'Migration failed ({e}), falling back to create_all...')
+        db.create_all()
 "
 
 # Seed database with initial data (only if tables are empty)
