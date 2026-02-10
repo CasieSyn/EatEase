@@ -2,6 +2,7 @@
 Image Preprocessing Module
 Handles image loading, resizing, normalization, and augmentation for ML models
 """
+from __future__ import annotations
 
 import os
 from typing import Tuple, Optional

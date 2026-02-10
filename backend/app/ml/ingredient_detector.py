@@ -2,6 +2,7 @@
 Ingredient Detection Module
 Uses YOLO model to detect ingredients from images
 """
+from __future__ import annotations
 
 import os
 from typing import List, Dict, Optional

@@ -9,7 +9,7 @@ try:
     from .ingredient_detector import IngredientDetector
     from .image_preprocessor import ImagePreprocessor
     ML_AVAILABLE = True
-except ImportError:
+except (ImportError, AttributeError):
     IngredientDetector = None
     ImagePreprocessor = None
     ML_AVAILABLE = False
