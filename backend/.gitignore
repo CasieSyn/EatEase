@@ -42,12 +42,12 @@ instance/
 *.swo
 *~
 
-# ML Models
+# ML Models (only root-level models/ directory, not app/models/)
 *.h5
 *.pkl
 *.pt
-models/
-!models/.gitkeep
+/models/
+!/models/.gitkeep
 
 # Uploads
 uploads/
