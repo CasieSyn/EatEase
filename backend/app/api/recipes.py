@@ -255,7 +255,7 @@ def rate_recipe(recipe_id):
     from app.models import MealPlan
     from datetime import datetime
 
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     data = request.get_json()
 
     if not data or 'rating' not in data:
@@ -321,18 +321,20 @@ def rate_recipe(recipe_id):
 @jwt_required()
 def get_recommendations():
     """Get personalized recipe recommendations for the user"""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     data = request.get_json() or {}
 
     # Get optional parameters
     available_ingredients = data.get('ingredients', [])
     limit = data.get('limit', 10)
+    min_match_percentage = data.get('min_match_percentage', 20.0)
 
     # Get recommendations
     recommendations = recommender.recommend_for_user(
         user_id=user_id,
         available_ingredients=available_ingredients if available_ingredients else None,
-        limit=limit
+        limit=limit,
+        min_match_percentage=min_match_percentage
     )
 
     return jsonify({

@@ -72,41 +72,6 @@ class IngredientService {
     return getIngredients(category: category);
   }
 
-  /// Detect ingredients from image (requires authentication)
-  Future<List<Map<String, dynamic>>> detectIngredients(String imagePath) async {
-    try {
-      final token = await _authService.getAccessToken();
-      if (token == null) {
-        throw Exception('Not authenticated');
-      }
-
-      // Create multipart request
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse(ApiConfig.detectIngredients),
-      );
-
-      // Add authorization header
-      request.headers['Authorization'] = 'Bearer $token';
-
-      // Add image file
-      request.files.add(await http.MultipartFile.fromPath('image', imagePath));
-
-      // Send request
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return List<Map<String, dynamic>>.from(data['ingredients'] as List);
-      } else {
-        throw Exception('Failed to detect ingredients: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('Error detecting ingredients: $e');
-    }
-  }
-
   /// Get available ingredient categories
   Future<List<String>> getCategories() async {
     // These are the actual categories from the backend database (lowercase)
@@ -119,5 +84,44 @@ class IngredientService {
       'spice',
       'dairy',
     ];
+  }
+
+  /// Create a new custom ingredient (requires authentication)
+  Future<Ingredient> createIngredient({
+    required String name,
+    String? category,
+    String? commonUnit,
+  }) async {
+    try {
+      final token = await _authService.getAccessToken();
+      if (token == null) {
+        throw Exception('Not authenticated');
+      }
+
+      final body = {
+        'name': name,
+        if (category != null) 'category': category,
+        if (commonUnit != null) 'common_unit': commonUnit,
+      };
+
+      final response = await http.post(
+        Uri.parse(ApiConfig.allIngredients),
+        headers: ApiConfig.authHeaders(token),
+        body: json.encode(body),
+      );
+
+      if (response.statusCode == 201) {
+        final data = json.decode(response.body);
+        return Ingredient.fromJson(data['ingredient'] as Map<String, dynamic>);
+      } else {
+        final error = json.decode(response.body);
+        throw Exception(error['error'] ?? 'Failed to create ingredient');
+      }
+    } catch (e) {
+      if (e.toString().contains('Exception: ')) {
+        rethrow;
+      }
+      throw Exception('Error creating ingredient: $e');
+    }
   }
 }

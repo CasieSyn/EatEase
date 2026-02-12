@@ -36,6 +36,7 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
   // Manual ingredient selection
   List<Ingredient> _availableIngredients = [];
   final Set<int> _selectedIngredientIds = {};
+  String _ingredientSearchQuery = '';
 
   /// Pick image from camera
   Future<void> _pickFromCamera() async {
@@ -100,7 +101,7 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
     });
 
     try {
-      final ingredients = await _ingredientService.getIngredients(perPage: 100);
+      final ingredients = await _ingredientService.getIngredients(perPage: 500);
       setState(() {
         _availableIngredients = ingredients;
         _isLoadingIngredients = false;
@@ -284,7 +285,7 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
           ],
         ),
         actions: [
-          if (_selectedImage != null)
+          if (_selectedImage != null || _detectionResult != null)
             Container(
               margin: const EdgeInsets.only(right: 8),
               decoration: BoxDecoration(
@@ -305,10 +306,11 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Image selection area
-            if (_selectedImage == null) ...[
+            if (_selectedImage == null && _detectionResult == null) ...[
               _buildImageSelectionCard(),
             ] else ...[
-              _buildSelectedImage(),
+              if (_selectedImage != null)
+                _buildSelectedImage(),
               const SizedBox(height: 16),
 
               // Manual ingredient selector
@@ -334,9 +336,9 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
               const SizedBox(height: 16),
 
               // Detection option (optional)
-              if (_detectionResult == null)
+              if (_detectionResult == null && _selectedImage != null)
                 _buildDetectButton()
-              else
+              else if (_detectionResult != null)
                 _buildDetectionResults(),
             ],
 
@@ -409,9 +411,11 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
-            // Live Camera Detection - primary option
-            _buildLiveCameraButton(),
-            const SizedBox(height: 16),
+            // Live Camera Detection - primary option (not available on web)
+            if (!kIsWeb) ...[
+              _buildLiveCameraButton(),
+              const SizedBox(height: 16),
+            ],
             // Gallery option - secondary
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -1464,11 +1468,34 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
                   ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
+            TextField(
+              decoration: InputDecoration(
+                hintText: 'Search ingredients...',
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                filled: true,
+                fillColor: AppColors.surfaceVariant.withValues(alpha: 0.3),
+                prefixIcon: Icon(Icons.search, size: 20, color: AppColors.onSurfaceVariant),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _ingredientSearchQuery = value;
+                });
+              },
+            ),
+            const SizedBox(height: 16),
             Wrap(
               spacing: 8,
               runSpacing: 10,
-              children: _availableIngredients.map((ingredient) {
+              children: _availableIngredients
+                  .where((ingredient) =>
+                      _ingredientSearchQuery.isEmpty ||
+                      ingredient.name.toLowerCase().contains(_ingredientSearchQuery.toLowerCase()))
+                  .map((ingredient) {
                 final isSelected = _selectedIngredientIds.contains(ingredient.id);
                 return GestureDetector(
                   onTap: () => _toggleIngredientSelection(ingredient.id),

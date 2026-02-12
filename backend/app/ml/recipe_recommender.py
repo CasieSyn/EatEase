@@ -21,7 +21,8 @@ class RecipeRecommender:
         user_id: int,
         available_ingredients: Optional[List[str]] = None,
         limit: int = 10,
-        use_pantry: bool = True
+        use_pantry: bool = True,
+        min_match_percentage: float = 20.0
     ) -> List[Dict]:
         """
         Recommend recipes for a user based on preferences, history, and pantry
@@ -95,6 +96,13 @@ class RecipeRecommender:
                 )
             })
 
+        # Filter out recipes below minimum ingredient match threshold
+        if available_ingredients and min_match_percentage > 0:
+            scored_recipes = [
+                sr for sr in scored_recipes
+                if sr['match_info']['match_percentage'] >= min_match_percentage
+            ]
+
         # Sort by score (highest first)
         scored_recipes.sort(key=lambda x: x['score'], reverse=True)
 
@@ -118,6 +126,17 @@ class RecipeRecommender:
         ).all()
 
         return [item[0] for item in pantry_items]
+
+    @staticmethod
+    def _ingredient_matches(ingredient_name: str, available_set: set) -> bool:
+        """Check if an ingredient matches any available ingredient using substring matching.
+        Handles cases like 'Egg' matching 'Eggs', 'Chicken' matching 'Chicken breast'."""
+        if ingredient_name in available_set:
+            return True
+        for available_ing in available_set:
+            if ingredient_name in available_ing or available_ing in ingredient_name:
+                return True
+        return False
 
     def _calculate_ingredient_match_details(
         self,
@@ -151,7 +170,10 @@ class RecipeRecommender:
                 'matching_count': 0,
                 'total_count': len(recipe_ingredients),
                 'matching_ingredients': [],
-                'missing_ingredients': [{'id': ing[0], 'name': ing[1], 'is_optional': ing[2]} for ing in recipe_ingredients]
+                'missing_ingredients': [
+                    {'id': ing[0], 'name': ing[1], 'is_optional': ing[2]}
+                    for ing in recipe_ingredients
+                ]
             }
 
         available_set = {ing.lower() for ing in available_ingredients}
@@ -160,7 +182,7 @@ class RecipeRecommender:
         missing = []
 
         for ing_id, ing_name, is_optional in recipe_ingredients:
-            if ing_name.lower() in available_set:
+            if self._ingredient_matches(ing_name.lower(), available_set):
                 matching.append({'id': ing_id, 'name': ing_name, 'is_optional': is_optional})
             else:
                 missing.append({'id': ing_id, 'name': ing_name, 'is_optional': is_optional})
@@ -190,11 +212,11 @@ class RecipeRecommender:
         Calculate recommendation score for a recipe
 
         Score components:
-        - Ingredient match: 0-40 points
-        - Recipe rating: 0-20 points
-        - Novelty (not recently eaten): 0-15 points
-        - Similar to favorites: 0-15 points
-        - Cooking time: 0-10 points
+        - Ingredient match: 0-70 points
+        - Recipe rating: 0-10 points
+        - Novelty (not recently eaten): 0-8 points
+        - Similar to favorites: 0-7 points
+        - Cooking time: 0-5 points
 
         Args:
             recipe: Recipe object
@@ -209,26 +231,25 @@ class RecipeRecommender:
         """
         score = 0.0
 
-        # 1. Ingredient Match (0-40 points)
+        # 1. Ingredient Match (0-70 points)
         if available_ingredients:
             match_score = self._calculate_ingredient_match(recipe, available_ingredients)
-            score += match_score * 40
+            score += match_score * 70
 
-        # 2. Recipe Rating (0-20 points)
+        # 2. Recipe Rating (0-10 points)
         if recipe.rating is not None and recipe.rating > 0:
-            rating_score = (recipe.rating / 5.0) * 20
+            rating_score = (recipe.rating / 5.0) * 10
             score += rating_score
 
-        # 3. Novelty - penalize recently eaten (0-15 points)
+        # 3. Novelty - penalize recently eaten (0-8 points)
         if recipe.id not in recent_meals:
-            score += 15
+            score += 8
         else:
-            # Reduce score based on how recently it was eaten
-            score += 5  # Still give some points for being a good option
+            score += 3
 
-        # 4. Similar to favorites (0-15 points)
+        # 4. Similar to favorites (0-7 points)
         if recipe.id in favorite_recipes:
-            score += 15
+            score += 7
         elif len(favorite_recipes) > 0:
             # Check if same cuisine type as favorites
             favorite_cuisines = db.session.query(Recipe.cuisine_type).filter(
@@ -237,15 +258,15 @@ class RecipeRecommender:
             favorite_cuisines = [c[0] for c in favorite_cuisines]
 
             if recipe.cuisine_type in favorite_cuisines:
-                score += 8
+                score += 4
 
-        # 5. Cooking Time (0-10 points) - prefer quick recipes
+        # 5. Cooking Time (0-5 points) - prefer quick recipes
         if recipe.total_time <= 30:
-            score += 10
+            score += 5
         elif recipe.total_time <= 45:
-            score += 7
+            score += 3
         elif recipe.total_time <= 60:
-            score += 4
+            score += 2
 
         return score
 
@@ -277,8 +298,11 @@ class RecipeRecommender:
         if len(recipe_ingredient_names) == 0:
             return 0.0
 
-        # Calculate match percentage
-        matching = len(recipe_ingredient_names.intersection(available_set))
+        # Calculate match percentage using partial/substring matching
+        matching = sum(
+            1 for recipe_ing in recipe_ingredient_names
+            if self._ingredient_matches(recipe_ing, available_set)
+        )
         total = len(recipe_ingredient_names)
 
         return matching / total

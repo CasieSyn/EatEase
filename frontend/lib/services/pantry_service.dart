@@ -241,4 +241,14 @@ class PantryService {
       return {};
     }
   }
+
+  /// Get pantry items as a map of ingredientId -> PantryItem (with quantity info)
+  Future<Map<int, PantryItem>> getPantryItemMap() async {
+    try {
+      final pantry = await getPantry();
+      return { for (var item in pantry) item.ingredientId: item };
+    } catch (e) {
+      return {};
+    }
+  }
 }

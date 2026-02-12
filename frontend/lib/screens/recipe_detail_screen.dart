@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import '../main.dart';
+import '../models/pantry_item.dart';
 import '../models/recipe.dart';
+import '../models/shopping_list.dart';
 import '../services/recipe_service.dart';
 import '../services/meal_plan_service.dart';
 import '../services/cache_service.dart';
 import '../services/notification_service.dart';
+import '../services/pantry_service.dart';
+import '../services/shopping_list_service.dart';
 import 'recipe_form_screen.dart';
+import 'shopping_lists_screen.dart';
 
 class RecipeDetailScreen extends StatefulWidget {
   final int recipeId;
@@ -23,17 +28,22 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
   final MealPlanService _mealPlanService = MealPlanService();
   final CacheService _cacheService = CacheService();
   final NotificationService _notificationService = NotificationService();
+  final PantryService _pantryService = PantryService();
+  final ShoppingListService _shoppingListService = ShoppingListService();
   Recipe? _recipe;
   bool _isLoading = false;
   String? _errorMessage;
   int _selectedRating = 0;
   bool _isFavorite = false;
+  Map<int, PantryItem> _pantryItemMap = {};
+  int _selectedServings = 0;
 
   @override
   void initState() {
     super.initState();
     _loadRecipe();
     _checkFavorite();
+    _loadPantry();
   }
 
   Future<void> _checkFavorite() async {
@@ -119,6 +129,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
       final recipe = await _recipeService.getRecipeById(widget.recipeId);
       setState(() {
         _recipe = recipe;
+        _selectedServings = recipe.servings ?? 1;
         _isLoading = false;
       });
 
@@ -206,10 +217,124 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     }
   }
 
+  Future<void> _loadPantry() async {
+    try {
+      final map = await _pantryService.getPantryItemMap();
+      if (mounted) {
+        setState(() {
+          _pantryItemMap = map;
+        });
+      }
+    } catch (e) {
+      // Pantry load failure is non-critical
+    }
+  }
+
+  /// Scale a base quantity by the selected servings ratio
+  double? _scaledQuantity(double? baseQty) {
+    if (baseQty == null || _recipe?.servings == null || _recipe!.servings == 0) return baseQty;
+    return baseQty * (_selectedServings / _recipe!.servings!);
+  }
+
+  /// Check if a pantry item has enough quantity for a recipe ingredient
+  /// Returns: 'enough', 'partial', or 'missing'
+  String _ingredientStatus(RecipeIngredient ing) {
+    if (ing.ingredientId == null || !_pantryItemMap.containsKey(ing.ingredientId)) {
+      return 'missing';
+    }
+    final pantryItem = _pantryItemMap[ing.ingredientId]!;
+    final needed = _scaledQuantity(ing.quantity);
+
+    // If pantry has no quantity tracked, or recipe has no quantity, treat as "have it"
+    if (pantryItem.quantity == null || needed == null) return 'enough';
+
+    // Only compare if units match (case-insensitive)
+    if (pantryItem.unit?.toLowerCase() != ing.unit?.toLowerCase()) return 'enough';
+
+    return pantryItem.quantity! >= needed ? 'enough' : 'partial';
+  }
+
+  bool get _isReadyToCook {
+    if (_recipe?.ingredients == null || _recipe!.ingredients!.isEmpty) return false;
+    return _recipe!.ingredients!
+        .where((ing) => ing.isOptional != true)
+        .every((ing) => _ingredientStatus(ing) == 'enough');
+  }
+
+  /// Ingredients that are missing or have insufficient quantity
+  List<RecipeIngredient> get _missingIngredients {
+    if (_recipe?.ingredients == null) return [];
+    return _recipe!.ingredients!
+        .where((ing) => ing.isOptional != true && _ingredientStatus(ing) != 'enough')
+        .toList();
+  }
+
+  Future<void> _addMissingToShoppingList() async {
+    final missing = _missingIngredients;
+    if (missing.isEmpty) return;
+
+    try {
+      final items = missing.map((ing) {
+        final scaled = _scaledQuantity(ing.quantity) ?? 0;
+        final status = _ingredientStatus(ing);
+        double qty = scaled;
+
+        // For partial items, only add the deficit
+        if (status == 'partial' && ing.ingredientId != null) {
+          final pantryItem = _pantryItemMap[ing.ingredientId]!;
+          if (pantryItem.quantity != null && pantryItem.unit?.toLowerCase() == ing.unit?.toLowerCase()) {
+            qty = scaled - pantryItem.quantity!;
+            if (qty < 0) qty = 0;
+          }
+        }
+
+        return ShoppingListItem(
+          ingredientId: ing.ingredientId ?? 0,
+          ingredientName: ing.ingredientName ?? '',
+          quantity: qty,
+          unit: ing.unit ?? '',
+        );
+      }).toList();
+
+      await _shoppingListService.createShoppingList(
+        name: '${_recipe!.name} - Shopping List',
+        items: items,
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${missing.length} missing ingredients added to shopping list'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          action: SnackBarAction(
+            label: 'View',
+            textColor: Colors.white,
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const ShoppingListsScreen()));
+            },
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to create shopping list: $e'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
+  }
+
   Future<void> _showAddToMealPlanDialog() async {
     DateTime selectedDate = DateTime.now();
     String selectedMealType = 'lunch';
-    int servings = _recipe?.servings ?? 4;
+    int servings = _selectedServings;
 
     final result = await showDialog<bool>(
       context: context,
@@ -696,6 +821,41 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                // Ready to Cook badge
+                                if (_isReadyToCook)
+                                  Container(
+                                    margin: const EdgeInsets.only(bottom: 12),
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.success.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.restaurant_rounded, color: AppColors.success, size: 20),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Ready to Cook!',
+                                          style: TextStyle(
+                                            color: AppColors.success,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'All ingredients in your pantry',
+                                          style: TextStyle(
+                                            color: AppColors.success.withValues(alpha: 0.8),
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+
                                 // Recipe Name
                                 Text(
                                   _recipe!.name,
@@ -744,10 +904,62 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                                         '${_recipe!.ratingCount ?? 0} ratings',
                                         iconColor: AppColors.accent,
                                       ),
-                                      if (_recipe!.servings != null)
-                                        _buildStatItem(Icons.people_outline_rounded, '${_recipe!.servings}', 'Servings'),
                                       if (_recipe!.nutrition?.calories != null)
                                         _buildStatItem(Icons.local_fire_department_outlined, _recipe!.nutrition!.calories!.toStringAsFixed(0), 'Calories'),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+
+                                // Servings Adjuster
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surfaceVariant,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.people_outline_rounded, color: AppColors.primary, size: 20),
+                                      const SizedBox(width: 8),
+                                      const Text('Servings', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                                      const Spacer(),
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          color: AppColors.surface,
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: IconButton(
+                                          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                                          iconSize: 18,
+                                          onPressed: _selectedServings > 1 ? () {
+                                            setState(() { _selectedServings--; });
+                                          } : null,
+                                          icon: const Icon(Icons.remove_rounded),
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: 40,
+                                        child: Text(
+                                          '$_selectedServings',
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          color: AppColors.surface,
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: IconButton(
+                                          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                                          iconSize: 18,
+                                          onPressed: () {
+                                            setState(() { _selectedServings++; });
+                                          },
+                                          icon: const Icon(Icons.add_rounded),
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -782,7 +994,43 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                                 // Ingredients
                                 if (_recipe!.ingredients != null && _recipe!.ingredients!.isNotEmpty) ...[
                                   _buildSectionHeader('Ingredients', Icons.egg_outlined),
-                                  const SizedBox(height: 12),
+                                  const SizedBox(height: 8),
+                                  // Pantry summary
+                                  if (_pantryItemMap.isNotEmpty) ...[
+                                    Builder(builder: (context) {
+                                      final required = _recipe!.ingredients!.where((i) => i.isOptional != true).toList();
+                                      final total = required.length;
+                                      final enoughCount = required.where((i) => _ingredientStatus(i) == 'enough').length;
+                                      return Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                        decoration: BoxDecoration(
+                                          color: enoughCount == total
+                                              ? AppColors.success.withValues(alpha: 0.1)
+                                              : AppColors.warning.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              enoughCount == total ? Icons.check_circle : Icons.inventory_2_outlined,
+                                              size: 18,
+                                              color: enoughCount == total ? AppColors.success : AppColors.warning,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              'You have $enoughCount of $total ingredients',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 13,
+                                                color: enoughCount == total ? AppColors.success : AppColors.warning,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }),
+                                    const SizedBox(height: 8),
+                                  ],
                                   Container(
                                     decoration: BoxDecoration(
                                       color: AppColors.surface,
@@ -799,6 +1047,13 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                                       children: _recipe!.ingredients!.asMap().entries.map((entry) {
                                         final ingredient = entry.value;
                                         final isLast = entry.key == _recipe!.ingredients!.length - 1;
+                                        final status = _ingredientStatus(ingredient);
+                                        final isEnough = status == 'enough';
+                                        final isPartial = status == 'partial';
+                                        final isMissing = status == 'missing' && ingredient.isOptional != true;
+                                        final scaled = _scaledQuantity(ingredient.quantity);
+                                        final qtyStr = scaled != null ? '${scaled % 1 == 0 ? scaled.toInt() : scaled.toStringAsFixed(1)} ' : '';
+                                        final pantryItem = ingredient.ingredientId != null ? _pantryItemMap[ingredient.ingredientId] : null;
                                         return Column(
                                           children: [
                                             Padding(
@@ -808,18 +1063,71 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                                                   Container(
                                                     padding: const EdgeInsets.all(8),
                                                     decoration: BoxDecoration(
-                                                      color: AppColors.secondary.withValues(alpha: 0.1),
+                                                      color: isEnough && pantryItem != null
+                                                          ? AppColors.success.withValues(alpha: 0.1)
+                                                          : (isMissing || isPartial)
+                                                              ? AppColors.warning.withValues(alpha: 0.1)
+                                                              : AppColors.surfaceVariant,
                                                       borderRadius: BorderRadius.circular(8),
                                                     ),
-                                                    child: const Icon(Icons.check_rounded, size: 16, color: AppColors.secondary),
+                                                    child: Icon(
+                                                      isEnough && pantryItem != null
+                                                          ? Icons.check_rounded
+                                                          : (isMissing || isPartial)
+                                                              ? Icons.shopping_cart_outlined
+                                                              : Icons.remove,
+                                                      size: 16,
+                                                      color: isEnough && pantryItem != null
+                                                          ? AppColors.success
+                                                          : (isMissing || isPartial)
+                                                              ? AppColors.warning
+                                                              : AppColors.onSurfaceVariant,
+                                                    ),
                                                   ),
                                                   const SizedBox(width: 12),
                                                   Expanded(
-                                                    child: Text(
-                                                      '${ingredient.quantity != null ? '${ingredient.quantity} ' : ''}${ingredient.unit ?? ''} ${ingredient.ingredientName ?? ''} ${ingredient.preparation ?? ''}'.trim(),
-                                                      style: const TextStyle(fontSize: 15),
+                                                    child: Column(
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                        Text(
+                                                          '$qtyStr${ingredient.unit ?? ''} ${ingredient.ingredientName ?? ''} ${ingredient.preparation ?? ''}'.trim(),
+                                                          style: TextStyle(
+                                                            fontSize: 15,
+                                                            color: isEnough && pantryItem != null ? AppColors.onSurface : (isMissing || isPartial) ? AppColors.warning : AppColors.onSurfaceVariant,
+                                                          ),
+                                                        ),
+                                                        if (isPartial && pantryItem != null && pantryItem.quantity != null && scaled != null)
+                                                          Text(
+                                                            'Have ${pantryItem.quantity! % 1 == 0 ? pantryItem.quantity!.toInt() : pantryItem.quantity!.toStringAsFixed(1)}${pantryItem.unit ?? ''}, need $qtyStr${ingredient.unit ?? ''}',
+                                                            style: TextStyle(fontSize: 11, color: AppColors.warning),
+                                                          ),
+                                                      ],
                                                     ),
                                                   ),
+                                                  if (isEnough && pantryItem != null)
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                      decoration: BoxDecoration(
+                                                        color: AppColors.success.withValues(alpha: 0.1),
+                                                        borderRadius: BorderRadius.circular(8),
+                                                      ),
+                                                      child: const Text(
+                                                        'In Pantry',
+                                                        style: TextStyle(fontSize: 11, color: AppColors.success, fontWeight: FontWeight.w600),
+                                                      ),
+                                                    ),
+                                                  if (isPartial)
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                      decoration: BoxDecoration(
+                                                        color: AppColors.warning.withValues(alpha: 0.1),
+                                                        borderRadius: BorderRadius.circular(8),
+                                                      ),
+                                                      child: const Text(
+                                                        'Not Enough',
+                                                        style: TextStyle(fontSize: 11, color: AppColors.warning, fontWeight: FontWeight.w600),
+                                                      ),
+                                                    ),
                                                   if (ingredient.isOptional == true)
                                                     Container(
                                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -841,6 +1149,24 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                                       }).toList(),
                                     ),
                                   ),
+                                  // "Add Missing to Shopping List" button
+                                  if (_missingIngredients.isNotEmpty && _pantryItemMap.isNotEmpty) ...[
+                                    const SizedBox(height: 12),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: OutlinedButton.icon(
+                                        onPressed: _addMissingToShoppingList,
+                                        icon: const Icon(Icons.add_shopping_cart_rounded),
+                                        label: Text('Add ${_missingIngredients.length} Missing to Shopping List'),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: AppColors.warning,
+                                          side: BorderSide(color: AppColors.warning),
+                                          padding: const EdgeInsets.all(14),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                   const SizedBox(height: 24),
                                 ],
 
@@ -886,7 +1212,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                                 ],
 
                                 // Nutrition
-                                if (_recipe!.nutrition != null) ...[
+                                if (_recipe!.nutrition != null && (_recipe!.nutrition!.calories != null || _recipe!.nutrition!.protein != null || _recipe!.nutrition!.carbohydrates != null || _recipe!.nutrition!.fat != null || _recipe!.nutrition!.fiber != null)) ...[
                                   _buildSectionHeader('Nutrition (per serving)', Icons.local_fire_department_outlined),
                                   const SizedBox(height: 12),
                                   Container(

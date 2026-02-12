@@ -44,16 +44,21 @@ class AuthService {
           'user': User.fromJson(data['user']),
           'message': data['message'],
         };
+      } else if (response.statusCode == 400) {
+        return {
+          'success': false,
+          'error': data['error'] ?? 'Please check your input and try again',
+        };
       } else {
         return {
           'success': false,
-          'error': data['error'] ?? 'Registration failed',
+          'error': 'Something went wrong. Please try again later.',
         };
       }
     } catch (e) {
       return {
         'success': false,
-        'error': 'Network error: ${e.toString()}',
+        'error': _friendlyError(e),
       };
     }
   }
@@ -87,16 +92,26 @@ class AuthService {
           'user': User.fromJson(data['user']),
           'message': data['message'],
         };
+      } else if (response.statusCode == 401) {
+        return {
+          'success': false,
+          'error': data['error'] ?? 'Incorrect email or password',
+        };
+      } else if (response.statusCode == 400) {
+        return {
+          'success': false,
+          'error': data['error'] ?? 'Please fill in all required fields',
+        };
       } else {
         return {
           'success': false,
-          'error': data['error'] ?? 'Login failed',
+          'error': 'Something went wrong. Please try again later.',
         };
       }
     } catch (e) {
       return {
         'success': false,
-        'error': 'Network error: ${e.toString()}',
+        'error': _friendlyError(e),
       };
     }
   }
@@ -133,7 +148,7 @@ class AuthService {
     } catch (e) {
       return {
         'success': false,
-        'error': 'Network error: ${e.toString()}',
+        'error': _friendlyError(e),
       };
     }
   }
@@ -204,5 +219,68 @@ class AuthService {
   Future<void> _saveAccessToken(String accessToken) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_accessTokenKey, accessToken);
+  }
+
+  // Change password
+  Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final token = await getAccessToken();
+      if (token == null) {
+        return {
+          'success': false,
+          'error': 'Not authenticated. Please log in again.',
+        };
+      }
+
+      final response = await http.post(
+        Uri.parse(ApiConfig.changePassword),
+        headers: ApiConfig.authHeaders(token),
+        body: jsonEncode({
+          'current_password': currentPassword,
+          'new_password': newPassword,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': data['message'],
+        };
+      } else {
+        return {
+          'success': false,
+          'error': data['error'] ?? 'Failed to change password',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'error': _friendlyError(e),
+      };
+    }
+  }
+
+  // Convert raw exceptions to user-friendly messages
+  String _friendlyError(Object e) {
+    final msg = e.toString().toLowerCase();
+    if (msg.contains('failed to fetch') ||
+        msg.contains('connection refused') ||
+        msg.contains('socketexception') ||
+        msg.contains('handshakeexception') ||
+        msg.contains('clientexception')) {
+      return 'Unable to connect to the server. Please check your internet connection and try again.';
+    }
+    if (msg.contains('timeout')) {
+      return 'The request timed out. Please try again.';
+    }
+    if (msg.contains('formatexception')) {
+      return 'Received an unexpected response from the server.';
+    }
+    return 'Something went wrong. Please try again later.';
   }
 }

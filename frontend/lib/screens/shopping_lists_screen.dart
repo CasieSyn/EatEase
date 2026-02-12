@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../main.dart';
 import '../models/shopping_list.dart';
+import '../services/pantry_service.dart';
 import '../services/shopping_list_service.dart';
 
 class ShoppingListsScreen extends StatefulWidget {
@@ -13,6 +14,7 @@ class ShoppingListsScreen extends StatefulWidget {
 
 class _ShoppingListsScreenState extends State<ShoppingListsScreen> {
   final ShoppingListService _service = ShoppingListService();
+  final PantryService _pantryService = PantryService();
   List<ShoppingList> _shoppingLists = [];
   bool _isLoading = false;
   String? _error;
@@ -294,6 +296,52 @@ class _ShoppingListsScreenState extends State<ShoppingListsScreen> {
             ),
           );
         }
+      }
+    }
+  }
+
+  Future<void> _transferToPantry(ShoppingList list) async {
+    final purchasedItems = list.items.where((item) => item.isPurchased).toList();
+
+    if (purchasedItems.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('No purchased items with valid ingredients to transfer'),
+          backgroundColor: AppColors.warning,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
+
+    try {
+      final ingredients = purchasedItems.map((item) => {
+        'ingredient_id': item.ingredientId,
+      }).toList();
+
+      await _pantryService.addMultipleToPantry(ingredients);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${purchasedItems.length} ingredient${purchasedItems.length == 1 ? '' : 's'} added to your pantry!'),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error transferring to pantry: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
       }
     }
   }
@@ -646,6 +694,27 @@ class _ShoppingListsScreenState extends State<ShoppingListsScreen> {
                         ),
                       );
                     }),
+                  ],
+
+                  // Transfer to Pantry button
+                  if (purchasedCount > 0) ...[
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _transferToPantry(list),
+                        icon: const Icon(Icons.kitchen_rounded, size: 20),
+                        label: Text('Transfer $purchasedCount Bought to Pantry'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.success,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ],
               ),

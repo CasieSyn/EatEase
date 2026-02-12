@@ -38,6 +38,45 @@ class ShoppingListService {
     }
   }
 
+  /// Create a shopping list with custom items (e.g., missing recipe ingredients)
+  Future<ShoppingList> createShoppingList({
+    required String name,
+    required List<ShoppingListItem> items,
+  }) async {
+    try {
+      final isValid = await _authService.isLoggedIn();
+      if (!isValid) {
+        throw Exception('Authentication failed. Please login again.');
+      }
+
+      final token = await _authService.getAccessToken();
+      if (token == null) {
+        throw Exception('Not authenticated');
+      }
+
+      final body = {
+        'name': name,
+        'items': items.map((item) => item.toJson()).toList(),
+      };
+
+      final response = await http.post(
+        Uri.parse(ApiConfig.shoppingLists),
+        headers: ApiConfig.authHeaders(token),
+        body: json.encode(body),
+      );
+
+      if (response.statusCode == 201) {
+        final data = json.decode(response.body);
+        return ShoppingList.fromJson(data['shopping_list'] as Map<String, dynamic>);
+      } else {
+        final error = json.decode(response.body);
+        throw Exception(error['error'] ?? 'Failed to create shopping list');
+      }
+    } catch (e) {
+      throw Exception('Error creating shopping list: $e');
+    }
+  }
+
   /// Generate shopping list from meal plans
   Future<ShoppingList> generateFromMealPlans({
     required String startDate,

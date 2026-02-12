@@ -11,7 +11,7 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # Handle Render's postgres:// URL (SQLAlchemy requires postgresql://)
-    _db_url = os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/eatease_db')
+    _db_url = os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@127.0.0.1:5432/eatease_db')
     if _db_url.startswith('postgres://'):
         _db_url = _db_url.replace('postgres://', 'postgresql://', 1)
     SQLALCHEMY_DATABASE_URI = _db_url

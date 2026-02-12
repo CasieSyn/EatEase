@@ -327,6 +327,40 @@ def get_shopping_lists():
     }), 200
 
 
+@users_bp.route('/shopping-lists', methods=['POST'])
+@jwt_required()
+def create_shopping_list():
+    """Create a shopping list with custom items (e.g., from a recipe's missing ingredients)"""
+    user_id = int(get_jwt_identity())
+    data = request.get_json()
+
+    if not data or not data.get('items'):
+        return jsonify({'error': 'Items are required'}), 400
+
+    shopping_list = ShoppingList(
+        user_id=user_id,
+        name=data.get('name', 'Shopping List'),
+        items=[{
+            'ingredient_id': item['ingredient_id'],
+            'ingredient_name': item.get('ingredient_name', ''),
+            'quantity': item.get('quantity', 0),
+            'unit': item.get('unit', ''),
+            'category': item.get('category'),
+            'is_purchased': False,
+        } for item in data['items']],
+        generated_from_meal_plan=False,
+        is_active=True
+    )
+
+    db.session.add(shopping_list)
+    db.session.commit()
+
+    return jsonify({
+        'message': 'Shopping list created successfully',
+        'shopping_list': shopping_list.to_dict()
+    }), 201
+
+
 @users_bp.route('/shopping-lists/generate', methods=['POST'])
 @jwt_required()
 def generate_shopping_list():

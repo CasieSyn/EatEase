@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import '../main.dart';
 import '../models/ingredient.dart';
 import '../models/pantry_item.dart';
+import '../models/recipe.dart';
 import '../services/ingredient_service.dart';
 import '../services/pantry_service.dart';
+import '../services/recipe_service.dart';
+import 'recipe_detail_screen.dart';
 
 class PantryScreen extends StatefulWidget {
   const PantryScreen({super.key});
@@ -15,7 +18,43 @@ class PantryScreen extends StatefulWidget {
 class _PantryScreenState extends State<PantryScreen> with SingleTickerProviderStateMixin {
   final PantryService _pantryService = PantryService();
   final IngredientService _ingredientService = IngredientService();
+  final RecipeService _recipeService = RecipeService();
   final TextEditingController _searchController = TextEditingController();
+
+  static const Map<String, List<String>> _categoryKeywords = {
+    'protein': [
+      'chicken', 'pork', 'beef', 'fish', 'shrimp', 'crab', 'squid',
+      'meat', 'liver', 'egg', 'tilapia', 'bangus', 'tuna', 'salmon',
+      'longganisa', 'tocino', 'tapa', 'ham', 'sausage', 'lobster',
+      'mussel', 'clam', 'oyster', 'tofu', 'tokwa',
+    ],
+    'vegetable': [
+      'kangkong', 'pechay', 'spinach', 'carrot', 'potato', 'tomato',
+      'onion', 'garlic', 'eggplant', 'cabbage', 'lettuce', 'corn',
+      'pepper', 'ampalaya', 'kalabasa', 'sayote', 'sitaw', 'okra',
+      'mushroom', 'bean', 'peas', 'squash', 'gourd', 'malunggay',
+      'radish', 'ginger', 'celery', 'cucumber',
+    ],
+    'grain': [
+      'rice', 'flour', 'bread', 'noodle', 'pasta', 'pancit', 'bihon',
+      'oat', 'cereal', 'cornstarch', 'tapioca', 'sago', 'pandesal',
+      'spaghetti', 'macaroni', 'miki', 'sotanghon',
+    ],
+    'condiment': [
+      'sauce', 'vinegar', 'ketchup', 'soy', 'oil', 'mayonnaise',
+      'mustard', 'bagoong', 'patis', 'calamansi', 'lemon', 'lime',
+      'tamarind', 'annatto', 'atsuete',
+    ],
+    'spice': [
+      'salt', 'pepper', 'sugar', 'bay leaf', 'paprika', 'cumin',
+      'turmeric', 'cinnamon', 'oregano', 'basil', 'cilantro',
+      'parsley', 'pandan', 'lemongrass', 'cloves', 'nutmeg',
+    ],
+    'dairy': [
+      'milk', 'cheese', 'butter', 'cream', 'yogurt', 'margarine',
+      'condensed', 'evaporated', 'coconut milk', 'gata',
+    ],
+  };
 
   late TabController _tabController;
   List<PantryItem> _pantryItems = [];
@@ -231,6 +270,183 @@ class _PantryScreenState extends State<PantryScreen> with SingleTickerProviderSt
     return text[0].toUpperCase() + text.substring(1);
   }
 
+  String? _suggestCategory(String ingredientName) {
+    final lower = ingredientName.toLowerCase();
+    for (final entry in _categoryKeywords.entries) {
+      for (final keyword in entry.value) {
+        if (lower.contains(keyword)) {
+          return entry.key;
+        }
+      }
+    }
+    return null;
+  }
+
+  bool get _hasExactMatch {
+    if (_searchQuery.isEmpty) return true;
+    return _allIngredients.any(
+      (i) => i.name.toLowerCase() == _searchQuery.toLowerCase(),
+    );
+  }
+
+  Future<void> _showCreateIngredientSheet(String initialName) async {
+    final nameController = TextEditingController(text: _capitalizeFirst(initialName));
+    final unitController = TextEditingController();
+    String? selectedCategory = _suggestCategory(initialName);
+    bool isCreating = false;
+
+    final result = await showModalBottomSheet<Ingredient>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+            left: 24,
+            right: 24,
+            top: 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(Icons.add_circle_outline_rounded, color: AppColors.primary),
+                  ),
+                  const SizedBox(width: 12),
+                  Text('New Ingredient', style: Theme.of(context).textTheme.titleLarge),
+                ],
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: nameController,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  labelText: 'Ingredient Name',
+                  hintText: 'e.g., Tokwa, Kangkong',
+                ),
+                onChanged: (value) {
+                  final suggested = _suggestCategory(value);
+                  if (suggested != selectedCategory) {
+                    setModalState(() => selectedCategory = suggested);
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                key: ValueKey(selectedCategory),
+                initialValue: selectedCategory,
+                decoration: InputDecoration(
+                  labelText: 'Category',
+                  suffixIcon: selectedCategory != null && selectedCategory == _suggestCategory(nameController.text)
+                      ? Tooltip(
+                          message: 'Auto-suggested',
+                          child: Icon(Icons.auto_awesome, color: AppColors.accent, size: 18),
+                        )
+                      : null,
+                ),
+                items: ['protein', 'vegetable', 'grain', 'condiment', 'spice', 'dairy']
+                    .map((c) => DropdownMenuItem(value: c, child: Text(_capitalizeFirst(c))))
+                    .toList(),
+                onChanged: (value) => setModalState(() => selectedCategory = value),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: unitController,
+                decoration: const InputDecoration(
+                  labelText: 'Common Unit (optional)',
+                  hintText: 'e.g., piece, kg, cup',
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: isCreating
+                      ? null
+                      : () async {
+                          final name = nameController.text.trim();
+                          if (name.isEmpty) return;
+
+                          setModalState(() => isCreating = true);
+                          try {
+                            final ingredient = await _ingredientService.createIngredient(
+                              name: name,
+                              category: selectedCategory,
+                              commonUnit: unitController.text.trim().isNotEmpty ? unitController.text.trim() : null,
+                            );
+                            if (context.mounted) Navigator.pop(context, ingredient);
+                          } catch (e) {
+                            setModalState(() => isCreating = false);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(e.toString().replaceFirst('Exception: ', '')),
+                                  backgroundColor: AppColors.error,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                  child: isCreating
+                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Text('Create & Add to Pantry'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (result != null) {
+      await _addToPantry(result);
+      _loadAllIngredients();
+    }
+  }
+
+  Future<void> _showRecipeSuggestions() async {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.85,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: AppColors.background,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: _RecipeSuggestionsSheet(
+            scrollController: scrollController,
+            recipeService: _recipeService,
+            pantryIngredientNames: _pantryItems.map((item) => item.name).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -401,6 +617,21 @@ class _PantryScreenState extends State<PantryScreen> with SingleTickerProviderSt
               ],
             ),
           ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _showRecipeSuggestions,
+              icon: const Icon(Icons.auto_awesome),
+              label: const Text('See Recipe Suggestions'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accent,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
           const SizedBox(height: 24),
 
           // Grouped ingredients
@@ -533,80 +764,386 @@ class _PantryScreenState extends State<PantryScreen> with SingleTickerProviderSt
         Expanded(
           child: _isLoadingIngredients
               ? Center(child: CircularProgressIndicator(color: AppColors.primary))
-              : _allIngredients.isEmpty
-                  ? Center(
-                      child: Text('No ingredients found', style: TextStyle(color: AppColors.onSurfaceVariant)),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.only(top: 8, bottom: 100),
-                      itemCount: _allIngredients.length,
-                      itemBuilder: (context, index) {
-                        final ingredient = _allIngredients[index];
-                        final isInPantry = _pantryIngredientIds.contains(ingredient.id);
-
-                        return Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(12),
-                            border: isInPantry
-                                ? Border.all(color: AppColors.success, width: 2)
-                                : null,
-                          ),
-                          child: ListTile(
-                            leading: Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                color: isInPantry
-                                    ? AppColors.success.withValues(alpha: 0.1)
-                                    : AppColors.secondary.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Icon(
-                                isInPantry ? Icons.check_circle_rounded : Icons.eco_rounded,
-                                color: isInPantry ? AppColors.success : AppColors.secondary,
-                              ),
-                            ),
-                            title: Text(
-                              ingredient.name,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: isInPantry ? AppColors.success : AppColors.onSurface,
-                              ),
-                            ),
-                            subtitle: ingredient.category != null
-                                ? Text(
-                                    _capitalizeFirst(ingredient.category!),
-                                    style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12),
-                                  )
-                                : null,
-                            trailing: isInPantry
-                                ? Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.success.withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Text(
-                                      'In Pantry',
-                                      style: TextStyle(
-                                        color: AppColors.success,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  )
-                                : IconButton(
-                                    icon: Icon(Icons.add_circle_rounded, color: AppColors.primary, size: 28),
-                                    onPressed: () => _addToPantry(ingredient),
-                                  ),
-                          ),
-                        );
-                      },
-                    ),
+              : _buildIngredientsList(),
         ),
       ],
+    );
+  }
+
+  Widget _buildIngredientsList() {
+    final showCreateOption = _searchQuery.isNotEmpty && !_hasExactMatch;
+
+    if (_allIngredients.isEmpty && !showCreateOption) {
+      return Center(
+        child: Text('No ingredients found', style: TextStyle(color: AppColors.onSurfaceVariant)),
+      );
+    }
+
+    final itemCount = _allIngredients.length + (showCreateOption ? 1 : 0);
+
+    return ListView.builder(
+      padding: const EdgeInsets.only(top: 8, bottom: 100),
+      itemCount: itemCount,
+      itemBuilder: (context, index) {
+        if (showCreateOption && index == 0) {
+          return _buildCreateIngredientTile();
+        }
+
+        final ingredientIndex = showCreateOption ? index - 1 : index;
+        final ingredient = _allIngredients[ingredientIndex];
+        final isInPantry = _pantryIngredientIds.contains(ingredient.id);
+
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: isInPantry ? Border.all(color: AppColors.success, width: 2) : null,
+          ),
+          child: ListTile(
+            leading: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: isInPantry
+                    ? AppColors.success.withValues(alpha: 0.1)
+                    : AppColors.secondary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                isInPantry ? Icons.check_circle_rounded : Icons.eco_rounded,
+                color: isInPantry ? AppColors.success : AppColors.secondary,
+              ),
+            ),
+            title: Text(
+              ingredient.name,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: isInPantry ? AppColors.success : AppColors.onSurface,
+              ),
+            ),
+            subtitle: ingredient.category != null
+                ? Text(
+                    _capitalizeFirst(ingredient.category!),
+                    style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12),
+                  )
+                : null,
+            trailing: isInPantry
+                ? Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'In Pantry',
+                      style: TextStyle(
+                        color: AppColors.success,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  )
+                : IconButton(
+                    icon: Icon(Icons.add_circle_rounded, color: AppColors.primary, size: 28),
+                    onPressed: () => _addToPantry(ingredient),
+                  ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCreateIngredientTile() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+      ),
+      child: ListTile(
+        leading: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(Icons.add_rounded, color: AppColors.primary),
+        ),
+        title: Text(
+          'Create "${_capitalizeFirst(_searchQuery)}"',
+          style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.primary),
+        ),
+        subtitle: Text(
+          'Add as a new ingredient',
+          style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12),
+        ),
+        trailing: Icon(Icons.arrow_forward_ios_rounded, color: AppColors.primary, size: 16),
+        onTap: () => _showCreateIngredientSheet(_searchQuery),
+      ),
+    );
+  }
+}
+
+class _RecipeSuggestionsSheet extends StatefulWidget {
+  final ScrollController scrollController;
+  final RecipeService recipeService;
+  final List<String> pantryIngredientNames;
+
+  const _RecipeSuggestionsSheet({
+    required this.scrollController,
+    required this.recipeService,
+    required this.pantryIngredientNames,
+  });
+
+  @override
+  State<_RecipeSuggestionsSheet> createState() => _RecipeSuggestionsSheetState();
+}
+
+class _RecipeSuggestionsSheetState extends State<_RecipeSuggestionsSheet> {
+  List<Recipe> _recommendations = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecommendations();
+  }
+
+  Future<void> _loadRecommendations() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final recs = await widget.recipeService.getRecommendations(
+        ingredients: widget.pantryIngredientNames,
+        limit: 10,
+      );
+      setState(() {
+        _recommendations = recs;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  Color _matchColor(double percentage) {
+    if (percentage >= 70) return AppColors.success;
+    if (percentage >= 40) return AppColors.accent;
+    return AppColors.primary;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          margin: const EdgeInsets.only(top: 12),
+          width: 40,
+          height: 4,
+          decoration: BoxDecoration(
+            color: AppColors.onSurfaceVariant.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.auto_awesome, color: AppColors.accent, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Recipe Suggestions',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                  Text(
+                    'Based on your pantry ingredients',
+                    style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: _isLoading
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(color: AppColors.primary),
+                      const SizedBox(height: 16),
+                      Text('Finding recipes...', style: TextStyle(color: AppColors.onSurfaceVariant)),
+                    ],
+                  ),
+                )
+              : _error != null
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.error_outline_rounded, size: 48, color: AppColors.error),
+                            const SizedBox(height: 16),
+                            Text('Failed to load suggestions', style: Theme.of(context).textTheme.titleMedium),
+                            const SizedBox(height: 16),
+                            ElevatedButton.icon(
+                              onPressed: _loadRecommendations,
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('Try Again'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : _recommendations.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(32),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.restaurant_rounded, size: 48, color: AppColors.onSurfaceVariant),
+                                const SizedBox(height: 16),
+                                Text('No suggestions yet', style: Theme.of(context).textTheme.titleMedium),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Add more ingredients to your pantry to get recipe suggestions!',
+                                  style: TextStyle(color: AppColors.onSurfaceVariant),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          controller: widget.scrollController,
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _recommendations.length,
+                          itemBuilder: (context, index) => _buildSuggestionCard(_recommendations[index]),
+                        ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSuggestionCard(Recipe recipe) {
+    final matchPct = recipe.matchPercentage ?? 0;
+    final matchCount = recipe.matchingIngredients ?? 0;
+    final totalCount = recipe.totalIngredients ?? 0;
+    final cookTime = recipe.time?.totalTime;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => RecipeDetailScreen(recipeId: recipe.id)),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: _matchColor(matchPct).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text(
+                    '${matchPct.round()}%',
+                    style: TextStyle(
+                      color: _matchColor(matchPct),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      recipe.name,
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.kitchen_rounded, size: 14, color: AppColors.onSurfaceVariant),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$matchCount/$totalCount ingredients',
+                          style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12),
+                        ),
+                        if (cookTime != null) ...[
+                          const SizedBox(width: 12),
+                          Icon(Icons.timer_outlined, size: 14, color: AppColors.onSurfaceVariant),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${cookTime}min',
+                            style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12),
+                          ),
+                        ],
+                        if (recipe.rating != null) ...[
+                          const SizedBox(width: 12),
+                          Icon(Icons.star_rounded, size: 14, color: AppColors.accent),
+                          const SizedBox(width: 2),
+                          Text(
+                            recipe.rating!.toStringAsFixed(1),
+                            style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: AppColors.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

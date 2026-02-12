@@ -84,8 +84,8 @@ class _LiveCameraDetectionScreenState extends State<LiveCameraDetectionScreen> {
   }
 
   void _startPeriodicDetection() {
-    // Detect every 2 seconds to avoid overloading the API
-    _detectionTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+    // Detect every 4 seconds to avoid overloading the API
+    _detectionTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
       if (_isInitialized && !_isDetecting && mounted) {
         _captureAndDetect();
       }
@@ -114,8 +114,10 @@ class _LiveCameraDetectionScreenState extends State<LiveCameraDetectionScreen> {
           _isDetecting = false;
 
           // Track detection counts for confirmed ingredients
+          final currentNames = <String>{};
           for (final detection in result.detections) {
             if (detection.name != null && detection.confidence >= 0.6) {
+              currentNames.add(detection.name!);
               _detectionCounts[detection.name!] =
                   (_detectionCounts[detection.name!] ?? 0) + 1;
 
@@ -124,6 +126,21 @@ class _LiveCameraDetectionScreenState extends State<LiveCameraDetectionScreen> {
                 _confirmedIngredients.add(detection.name!);
               }
             }
+          }
+
+          // Decay counts for ingredients NOT detected in this frame
+          final keysToRemove = <String>[];
+          for (final key in _detectionCounts.keys) {
+            if (!currentNames.contains(key)) {
+              _detectionCounts[key] = _detectionCounts[key]! - 1;
+              if (_detectionCounts[key]! <= 0) {
+                keysToRemove.add(key);
+                _confirmedIngredients.remove(key);
+              }
+            }
+          }
+          for (final key in keysToRemove) {
+            _detectionCounts.remove(key);
           }
         });
       }

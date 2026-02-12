@@ -430,7 +430,6 @@ class GoogleVisionDetector:
         'niyog': 'Coconut',
         'young coconut': 'Buko',
         'buko': 'Buko',
-        'calamansi': 'Calamansi',
         'dayap': 'Dayap',
         'key lime': 'Dayap',
         'suha': 'Pomelo',
@@ -465,7 +464,7 @@ class GoogleVisionDetector:
         'sardine': 'Sardines',
         'canned tuna': 'Canned Tuna',
         'tuna flakes': 'Canned Tuna',
-        'coconut cream': 'Canned Coconut Cream',
+        'canned coconut cream': 'Canned Coconut Cream',
 
         # =====================
         # COOKING OILS & FATS
@@ -565,13 +564,15 @@ class GoogleVisionDetector:
             # Create Vision API image object
             image = vision.Image(content=image_bytes)
 
-            # Perform label detection
-            response = self.client.label_detection(image=image)
+            # Perform label detection + object localization in a single API call
+            features = [
+                vision.Feature(type_=vision.Feature.Type.LABEL_DETECTION),
+                vision.Feature(type_=vision.Feature.Type.OBJECT_LOCALIZATION),
+            ]
+            request = vision.AnnotateImageRequest(image=image, features=features)
+            response = self.client.annotate_image(request=request)
             labels = response.label_annotations
-
-            # Also try object localization for better results
-            objects_response = self.client.object_localization(image=image)
-            objects = objects_response.localized_object_annotations
+            objects = response.localized_object_annotations
 
             detections = []
 
@@ -636,6 +637,30 @@ class GoogleVisionDetector:
             print(f"Error in Google Vision detection: {e}")
             return []
 
+    @staticmethod
+    def _is_valid_partial_match(key: str, label: str) -> bool:
+        """
+        Check if a partial match between key and label is valid.
+        Requires both strings to be at least 4 chars and the shorter
+        string to be at least 70% the length of the longer string,
+        OR the shorter string appears as a whole word in the longer string.
+        """
+        if len(key) < 4 or len(label) < 4:
+            return False
+
+        shorter, longer = (key, label) if len(key) <= len(label) else (label, key)
+
+        # Check whole-word boundary: shorter appears as a complete word in longer
+        import re
+        if re.search(r'\b' + re.escape(shorter) + r'\b', longer):
+            return True
+
+        # Length ratio check: avoid tiny substrings matching long keys
+        if len(shorter) / len(longer) >= 0.7:
+            return True
+
+        return False
+
     def _map_to_ingredient(self, label: str) -> Optional[str]:
         """
         Map Google Vision label to ingredient name.
@@ -655,9 +680,9 @@ class GoogleVisionDetector:
             print(f"Using learned mapping: {label} -> {learned_mappings[label]}")
             return learned_mappings[label]
 
-        # Check partial matches in learned mappings
+        # Check partial matches in learned mappings (with guards)
         for key, value in learned_mappings.items():
-            if key in label or label in key:
+            if (key in label or label in key) and self._is_valid_partial_match(key, label):
                 print(f"Using learned partial mapping: {label} -> {value}")
                 return value
 
@@ -665,9 +690,11 @@ class GoogleVisionDetector:
         if label in self.VISION_TO_INGREDIENT:
             return self.VISION_TO_INGREDIENT[label]
 
-        # Partial match (e.g., "fresh carrot" -> "carrot")
+        # Partial match with guards (e.g., "fresh carrot" -> "carrot")
         for key, value in self.VISION_TO_INGREDIENT.items():
-            if key in label or label in key:
+            if value is None:
+                continue
+            if (key in label or label in key) and self._is_valid_partial_match(key, label):
                 return value
 
         return None

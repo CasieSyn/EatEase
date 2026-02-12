@@ -61,6 +61,7 @@ class ApiConfig {
   static String get login => '$baseUrl$auth/login';
   static String get me => '$baseUrl$auth/me';
   static String get refresh => '$baseUrl$auth/refresh';
+  static String get changePassword => '$baseUrl$auth/change-password';
 
   // Recipe endpoints
   static String get allRecipes => '$baseUrl$recipes/';

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
@@ -84,8 +85,11 @@ class IngredientDetectionService {
         );
       }
 
-      // Send request
-      var streamedResponse = await request.send();
+      // Send request with timeout
+      var streamedResponse = await request.send().timeout(
+        const Duration(seconds: 30),
+        onTimeout: () => throw TimeoutException('Detection request timed out. Please try again.'),
+      );
       var response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {
@@ -95,8 +99,11 @@ class IngredientDetectionService {
         final error = json.decode(response.body);
         throw Exception(error['error'] ?? 'Failed to detect ingredients: ${response.statusCode}');
       }
+    } on TimeoutException {
+      throw Exception('Detection timed out. Please check your connection and try again.');
     } catch (e) {
-      throw Exception('Error detecting ingredients: $e');
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      throw Exception(msg);
     }
   }
 }
