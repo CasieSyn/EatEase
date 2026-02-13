@@ -100290,7 +100290,7 @@ o=A.E("Scan Your Ingredients",e,e,e,e,o==null?e:o.q2(B.W),e,e,e)
 n=A.E("Take a photo of your ingredients and we'll help you find delicious recipes",e,e,e,e,A.ad(e,e,B.u,e,e,e,e,e,e,e,e,15,e,e,e,e,e,!0,e,e,e,e,e,e,e,e),B.aB,e,e)
 m=A.P(20)
 l=B.r.P(0.4)
-l=A.cY(!1,B.D,!0,m,A.e2(!1,A.P(20),!0,A.X(e,A.au(A.b([A.X(e,B.Ny,B.e,e,e,new A.V(B.f.P(0.2),e,e,A.P(12),e,e,B.m),e,e,e,e,B.cG,e,e,e),B.bV,A.ax(A.b([A.E("Webcam Detection",e,e,e,e,B.a04,e,e,e),B.k0,A.E("Use webcam to scan ingredients",e,e,e,e,A.ad(e,e,B.f.P(0.8),e,e,e,e,e,e,e,e,13,e,e,e,e,e,!0,e,e,e,e,e,e,e,e),e,e,e)],d),B.O,B.h,B.j),B.al,A.aj(B.j2,B.f.P(0.7),e,18)],d),B.k,B.h,B.a0,0),B.e,e,e,e,e,e,e,e,B.L3,e,e,e),e,!0,e,e,e,e,e,e,e,e,e,e,f.gaq_(),e,e,e,e,e,e,e),B.e,B.r,4,e,l,e,e,e,B.aF)
+l=A.cY(!1,B.D,!0,m,A.e2(!1,A.P(20),!0,A.X(e,A.au(A.b([A.X(e,B.Ny,B.e,e,e,new A.V(B.f.P(0.2),e,e,A.P(12),e,e,B.m),e,e,e,e,B.cG,e,e,e),B.bV,A.ax(A.b([A.E("Live Detection",e,e,e,e,B.a04,e,e,e),B.k0,A.E("Point camera at ingredients",e,e,e,e,A.ad(e,e,B.f.P(0.8),e,e,e,e,e,e,e,e,13,e,e,e,e,e,!0,e,e,e,e,e,e,e,e),e,e,e)],d),B.O,B.h,B.j),B.al,A.aj(B.j2,B.f.P(0.7),e,18)],d),B.k,B.h,B.a0,0),B.e,e,e,e,e,e,e,e,B.L3,e,e,e),e,!0,e,e,e,e,e,e,e,e,e,e,f.gaq_(),e,e,e,e,e,e,e),B.e,B.r,4,e,l,e,e,e,B.aF)
 m=A.b([],d)
 k=A.P(16)
 j=A.P(16)
@@ -100304,7 +100304,7 @@ q=A.b([new A.aY(0,B.J,B.t.P(0.1),B.bJ,20)],t.V)
 p=A.P(20)
 o=f.x.c
 o===$&&A.a()
-s.push(A.X(e,A.vF(p,A.ax(A.b([new A.dm(B.aW,e,B.b1,B.v,A.b([A.Qj(o,e,B.dH,250,1/0),A.ej(0,A.X(e,e,B.e,e,e,new A.V(e,e,e,e,e,new A.e3(B.cl,B.cy,B.aQ,A.b([B.y,B.t.P(0.6)],t.c),e,e),B.m),e,80,e,e,e,e,e,e),e,e,0,0,e,e),A.ej(e,A.X(e,B.We,B.e,e,e,new A.V(B.p,e,e,A.P(20),e,e,B.m),e,e,e,e,B.dq,e,e,e),e,e,12,e,12,e)],d),e),A.X(e,A.au(A.b([f.TA(B.j7,"Change",f.gXT()),B.bV,f.TA(B.j3,"Webcam",f.gaqS())],d),B.k,B.ak,B.j,0),B.e,B.f,e,e,e,e,e,e,B.qL,e,e,e)],d),B.k,B.h,B.j),B.bq),B.e,e,e,new A.V(e,e,e,r,q,e,B.m),e,e,e,e,e,e,e,e))}s.push(B.Q)
+s.push(A.X(e,A.vF(p,A.ax(A.b([new A.dm(B.aW,e,B.b1,B.v,A.b([A.Qj(o,e,B.dH,250,1/0),A.ej(0,A.X(e,e,B.e,e,e,new A.V(e,e,e,e,e,new A.e3(B.cl,B.cy,B.aQ,A.b([B.y,B.t.P(0.6)],t.c),e,e),B.m),e,80,e,e,e,e,e,e),e,e,0,0,e,e),A.ej(e,A.X(e,B.We,B.e,e,e,new A.V(B.p,e,e,A.P(20),e,e,B.m),e,e,e,e,B.dq,e,e,e),e,e,12,e,12,e)],d),e),A.X(e,A.au(A.b([f.TA(B.j7,"Change",f.gXT()),B.bV,f.TA(B.j3,"Retake",f.gaqS())],d),B.k,B.ak,B.j,0),B.e,B.f,e,e,e,e,e,e,B.qL,e,e,e)],d),B.k,B.h,B.j),B.bq),B.e,e,e,new A.V(e,e,e,r,q,e,B.m),e,e,e,e,e,e,e,e))}s.push(B.Q)
 r=f.at==null
 if(r&&f.x!=null){r=A.b([B.r,B.IQ],t.c)
 q=A.P(16)
@@ -100907,7 +100907,7 @@ else if(!n.f)k.push(A.bP(A.ax(A.b([A.m5(m,B.r,m,m,m,m,m,m,m,m),B.Q,B.a3Z],l),B.k
 else k.push(n.ael())
 s=t.c
 r=A.b([B.t.P(0.7),B.y],s)
-q=A.b([A.cG(m,m,m,B.No,m,m,new A.azJ(a),m,m,m,m),B.al,A.bY(A.E("Webcam Detection",m,m,m,m,B.E8,m,m,m),1)],l)
+q=A.b([A.cG(m,m,m,B.No,m,m,new A.azJ(a),m,m,m,m),B.al,A.bY(A.E("Live Detection",m,m,m,m,B.E8,m,m,m),1)],l)
 if(n.r)q.push(A.X(m,B.Wd,B.e,m,m,new A.V(B.r,m,m,A.P(16),m,m,B.m),m,m,m,m,B.dq,m,m,m))
 k.push(A.ej(m,A.lw(!0,A.X(m,A.au(q,B.k,B.h,B.j,0),B.e,m,m,new A.V(m,m,m,m,m,new A.e3(B.cl,B.cy,B.aQ,r,m,m),B.m),m,m,m,m,B.at,m,m,m),B.af,!0),m,m,0,0,0,m))
 if(n.f&&n.y.length!==0)k.push(n.aeq())
@@ -104691,57 +104691,59 @@ case 6:case 1:return A.q(q,r)
 case 2:return A.p(o.at(-1),r)}})
 return A.r($async$vN,r)},
 lz(a){return this.az9(a)},
-az9(a3){var s=0,r=A.t(t.l2),q,p=2,o=[],n=this,m,l,k,j,i,h,g,f,e,d,c,b,a,a0,a1,a2
-var $async$lz=A.o(function(a5,a6){if(a5===1){o.push(a6)
+az9(a5){var s=0,r=A.t(t.l2),q,p=2,o=[],n=this,m,l,k,j,i,h,g,f,e,d,c,b,a,a0,a1,a2,a3,a4
+var $async$lz=A.o(function(a7,a8){if(a7===1){o.push(a8)
 s=p}while(true)switch(s){case 0:p=4
-c=n.a
+b=n.a
 s=7
-return A.k(c.iI(),$async$lz)
-case 7:m=a6
-if(!m){c=A.aq(u.L)
-throw A.f(c)}s=8
-return A.k(c.dE(),$async$lz)
-case 8:l=a6
-if(l==null){c=A.aq("Not authenticated")
-throw A.f(c)}k=A.b49("POST",A.c6(A.db()+"/api/ingredients/detect",0,null))
+return A.k(b.iI(),$async$lz)
+case 7:m=a8
+if(!m){b=A.aq(u.L)
+throw A.f(b)}s=8
+return A.k(b.dE(),$async$lz)
+case 8:l=a8
+if(l==null){b=A.aq("Not authenticated")
+throw A.f(b)}k=A.b49("POST",A.c6(A.db()+"/api/ingredients/detect",0,null))
 k.r.n(0,"Authorization","Bearer "+l)
 s=9
-return A.k(a3.PY(),$async$lz)
-case 9:j=a6
-c=k.y
-b=j
-a=A.aUq(b,t.Cm)
-b=J.bm(b)
-a=A.aPN(new A.jY(a))
-a0=A.Rg("application","octet-stream",null)
-c.push(new A.Rm("image",b,a3.b,a0,a))
+return A.k(a5.PY(),$async$lz)
+case 9:j=a8
+a=a5.b
+i=B.c.m(a,".")?a:"capture.jpg"
+b=k.y
+a0=j
+a1=A.aUq(a0,t.Cm)
+a0=J.bm(a0)
+a1=A.aPN(new A.jY(a1))
+a2=A.Rg("application","octet-stream",null)
+b.push(new A.Rm("image",a0,i,a2,a1))
 s=10
 return A.k(k.B_().aG_(B.Kh,new A.aed()),$async$lz)
-case 10:i=a6
+case 10:h=a8
 s=11
-return A.k(A.T1(i),$async$lz)
-case 11:h=a6
-if(h.b===200){c=h
-g=B.L.aV(A.d1(A.d0(c.e)).aV(c.w))
-c=A.b3d(t.P.a(g))
-q=c
+return A.k(A.T1(h),$async$lz)
+case 11:g=a8
+if(g.b===200){b=g
+f=B.L.aV(A.d1(A.d0(b.e)).aV(b.w))
+b=A.b3d(t.P.a(f))
+q=b
 s=1
-break}else try{c=h
-f=B.L.aV(A.d1(A.d0(c.e)).aV(c.w))
-c=J.bl(f,"error")
-c=A.aq(c==null?"Failed to detect ingredients: "+h.b:c)
-throw A.f(c)}catch(a4){if(t.bE.b(A.a1(a4))){c=A.aq("Failed to detect ingredients: server error ("+h.b+")")
-throw A.f(c)}else throw a4}p=2
+break}else try{b=g
+e=B.L.aV(A.d1(A.d0(b.e)).aV(b.w))
+b=J.bl(e,"error")
+b=A.aq(b==null?"Failed to detect ingredients: "+g.b:b)
+throw A.f(b)}catch(a6){if(t.bE.b(A.a1(a6))){b=A.aq("Failed to detect ingredients: server error ("+g.b+")")
+throw A.f(b)}else throw a6}p=2
 s=6
 break
 case 4:p=3
-a2=o.pop()
-c=A.a1(a2)
-if(c instanceof A.GN)throw A.f(A.aq("Detection timed out. Please check your connection and try again."))
-else{e=c
-d=B.c.A3(J.c7(e),"Exception: ","")
-c=A.aq(d)
-throw A.f(c)}s=6
+a4=o.pop()
+b=A.a1(a4)
+if(b instanceof A.GN)throw A.f(A.aq("Detection timed out. Please check your connection and try again."))
+else{d=b
+c=B.c.A3(J.c7(d),"Exception: ","")
+b=A.aq(c)
+throw A.f(b)}s=6
 break
 case 3:s=2
 break
