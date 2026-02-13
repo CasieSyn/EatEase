@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import '../main.dart';
@@ -132,7 +133,7 @@ class _LiveCameraDetectionScreenState extends State<LiveCameraDetectionScreen> {
           final keysToRemove = <String>[];
           for (final key in _detectionCounts.keys) {
             if (!currentNames.contains(key)) {
-              _detectionCounts[key] = _detectionCounts[key]! - 1;
+              _detectionCounts[key] = (_detectionCounts[key]! - 1).clamp(0, 999);
               if (_detectionCounts[key]! <= 0) {
                 keysToRemove.add(key);
                 _confirmedIngredients.remove(key);
@@ -239,10 +240,10 @@ class _LiveCameraDetectionScreenState extends State<LiveCameraDetectionScreen> {
                       icon: const Icon(Icons.close, color: Colors.white, size: 28),
                     ),
                     const SizedBox(width: 12),
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Live Detection',
-                        style: TextStyle(
+                        kIsWeb ? 'Webcam Detection' : 'Live Detection',
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -370,14 +371,19 @@ class _LiveCameraDetectionScreenState extends State<LiveCameraDetectionScreen> {
   }
 
   Widget _buildCameraPreview() {
+    final previewSize = _cameraController!.value.previewSize;
+    // On web, previewSize may be null — use simple expanded preview
+    if (previewSize == null) {
+      return Center(child: CameraPreview(_cameraController!));
+    }
     return ClipRect(
       child: OverflowBox(
         alignment: Alignment.center,
         child: FittedBox(
           fit: BoxFit.cover,
           child: SizedBox(
-            width: _cameraController!.value.previewSize!.height,
-            height: _cameraController!.value.previewSize!.width,
+            width: previewSize.height,
+            height: previewSize.width,
             child: CameraPreview(_cameraController!),
           ),
         ),
@@ -386,9 +392,12 @@ class _LiveCameraDetectionScreenState extends State<LiveCameraDetectionScreen> {
   }
 
   Widget _buildDetectionOverlay() {
+    final filteredDetections = _currentDetections.where((d) => d.name != null).toList();
     return Positioned.fill(
       child: Stack(
-        children: _currentDetections.where((d) => d.name != null).map((detection) {
+        children: filteredDetections.asMap().entries.map((entry) {
+          final index = entry.key;
+          final detection = entry.value;
           // Only show if we have bounding box
           if (detection.bbox.isEmpty || detection.bbox.length < 4) {
             return const SizedBox.shrink();
@@ -399,7 +408,7 @@ class _LiveCameraDetectionScreenState extends State<LiveCameraDetectionScreen> {
           final color = isHighConfidence ? AppColors.success : AppColors.warning;
 
           return Positioned(
-            top: 80 + (_currentDetections.indexOf(detection) * 60),
+            top: 80 + (index * 60),
             left: 16,
             right: 16,
             child: Container(
@@ -616,11 +625,24 @@ class _LiveCameraDetectionScreenState extends State<LiveCameraDetectionScreen> {
       imageFormatGroup: ImageFormatGroup.jpeg,
     );
 
-    await _cameraController!.initialize();
+    try {
+      await _cameraController!.initialize();
 
-    if (mounted) {
-      setState(() {});
-      _startPeriodicDetection();
+      if (mounted) {
+        setState(() {});
+        _startPeriodicDetection();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to switch camera: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        // Try to go back since camera is broken
+        Navigator.pop(context);
+      }
     }
   }
 }

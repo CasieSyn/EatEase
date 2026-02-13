@@ -6,6 +6,7 @@ import '../main.dart';
 import '../services/ingredient_detection_service.dart';
 import '../services/recipe_service.dart';
 import '../services/ingredient_service.dart';
+import '../services/pantry_service.dart';
 import '../models/recipe.dart';
 import '../models/ingredient.dart';
 import 'recipe_detail_screen.dart';
@@ -23,12 +24,14 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
   final IngredientDetectionService _detectionService = IngredientDetectionService();
   final RecipeService _recipeService = RecipeService();
   final IngredientService _ingredientService = IngredientService();
+  final PantryService _pantryService = PantryService();
   final ImagePicker _picker = ImagePicker();
 
   XFile? _selectedImage;
   bool _isDetecting = false;
   bool _isSearching = false;
   bool _isLoadingIngredients = false;
+  bool _isAddingToPantry = false;
   IngredientDetectionResult? _detectionResult;
   List<Recipe>? _matchingRecipes;
   String? _errorMessage;
@@ -38,13 +41,8 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
   final Set<int> _selectedIngredientIds = {};
   String _ingredientSearchQuery = '';
 
-  /// Pick image from camera
+  /// Pick image from camera (works on mobile + web via webcam)
   Future<void> _pickFromCamera() async {
-    if (kIsWeb) {
-      _showError('Camera is not supported on web. Please use gallery.');
-      return;
-    }
-
     try {
       final XFile? image = await _picker.pickImage(
         source: ImageSource.camera,
@@ -95,6 +93,7 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
 
   /// Load available ingredients from database
   Future<void> _loadAvailableIngredients() async {
+    if (_isLoadingIngredients) return;
     setState(() {
       _isLoadingIngredients = true;
       _errorMessage = null;
@@ -102,11 +101,13 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
 
     try {
       final ingredients = await _ingredientService.getIngredients(perPage: 500);
+      if (!mounted) return;
       setState(() {
         _availableIngredients = ingredients;
         _isLoadingIngredients = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoadingIngredients = false;
         _errorMessage = 'Failed to load ingredients: $e';
@@ -167,6 +168,7 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
     try {
       final result = await _detectionService.detectIngredients(_selectedImage!);
 
+      if (!mounted) return;
       setState(() {
         _detectionResult = result;
         _isDetecting = false;
@@ -181,6 +183,7 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
         _showError('No ingredients detected. Try a clearer image.');
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isDetecting = false;
         _errorMessage = e.toString();
@@ -219,6 +222,7 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
         ingredients: ingredientNames,
       );
 
+      if (!mounted) return;
       setState(() {
         _matchingRecipes = recipes;
         _isSearching = false;
@@ -228,10 +232,101 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
         _showError('No recipes found with these ingredients');
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isSearching = false;
         _errorMessage = e.toString();
       });
+    }
+  }
+
+  /// Add selected/detected ingredients to user's pantry
+  Future<void> _addSelectedToPantry() async {
+    List<int> ingredientIdsToAdd = [];
+
+    if (_selectedIngredientIds.isNotEmpty) {
+      ingredientIdsToAdd = _selectedIngredientIds.toList();
+    } else if (_detectionResult != null &&
+        _detectionResult!.detectedIngredients.isNotEmpty) {
+      ingredientIdsToAdd =
+          _detectionResult!.detectedIngredients.map((ing) => ing.id).toList();
+    }
+
+    if (ingredientIdsToAdd.isEmpty) {
+      _showError('Please select ingredients or use detection first');
+      return;
+    }
+
+    setState(() {
+      _isAddingToPantry = true;
+    });
+
+    try {
+      final ingredientMaps = ingredientIdsToAdd.map((id) {
+        Ingredient? ingredient;
+        try {
+          ingredient = _availableIngredients.firstWhere((ing) => ing.id == id);
+        } catch (_) {
+          try {
+            ingredient =
+                _detectionResult?.detectedIngredients.firstWhere((ing) => ing.id == id);
+          } catch (_) {
+            ingredient = null;
+          }
+        }
+        return <String, dynamic>{
+          'ingredient_id': id,
+          if (ingredient?.commonUnit != null) 'unit': ingredient!.commonUnit,
+        };
+      }).toList();
+
+      final result = await _pantryService.addMultipleToPantry(ingredientMaps);
+
+      if (!mounted) return;
+
+      final addedCount = (result['added'] as List?)?.length ?? 0;
+      final updatedCount = (result['updated'] as List?)?.length ?? 0;
+
+      String message;
+      if (addedCount > 0 && updatedCount > 0) {
+        message = 'Added $addedCount new, $updatedCount already in pantry';
+      } else if (addedCount > 0) {
+        message =
+            'Added $addedCount ingredient${addedCount > 1 ? 's' : ''} to pantry';
+      } else if (updatedCount > 0) {
+        message =
+            'All $updatedCount ingredient${updatedCount > 1 ? 's' : ''} already in pantry';
+      } else {
+        message = 'Ingredients added to pantry';
+      }
+
+      setState(() {
+        _isAddingToPantry = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: 10),
+              Expanded(child: Text(message)),
+            ],
+          ),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isAddingToPantry = false;
+      });
+      _showError(
+          'Failed to add to pantry: ${e.toString().replaceFirst("Exception: ", "")}');
     }
   }
 
@@ -259,6 +354,7 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
       _errorMessage = null;
       _selectedIngredientIds.clear();
       _availableIngredients.clear();
+      _isAddingToPantry = false;
     });
   }
 
@@ -313,7 +409,15 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
                 _buildSelectedImage(),
               const SizedBox(height: 16),
 
-              // Manual ingredient selector
+              // AI Detection (show first — primary action)
+              if (_detectionResult == null && _selectedImage != null)
+                _buildDetectButton()
+              else if (_detectionResult != null)
+                _buildDetectionResults(),
+
+              const SizedBox(height: 16),
+
+              // Manual ingredient selector (fallback / supplement)
               if (_isLoadingIngredients)
                 Center(
                   child: Padding(
@@ -332,14 +436,6 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
                 )
               else if (_availableIngredients.isNotEmpty)
                 _buildManualIngredientSelector(),
-
-              const SizedBox(height: 16),
-
-              // Detection option (optional)
-              if (_detectionResult == null && _selectedImage != null)
-                _buildDetectButton()
-              else if (_detectionResult != null)
-                _buildDetectionResults(),
             ],
 
             // Error message
@@ -411,15 +507,22 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
-            // Live Camera Detection - primary option (not available on web)
-            if (!kIsWeb) ...[
-              _buildLiveCameraButton(),
-              const SizedBox(height: 16),
-            ],
-            // Gallery option - secondary
+            // Live Camera Detection - primary option (works on all platforms via camera_web)
+            _buildLiveCameraButton(),
+            const SizedBox(height: 16),
+            // Camera snap + Gallery options
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                if (!kIsWeb)
+                  _buildOptionButton(
+                    icon: Icons.camera_alt_rounded,
+                    label: 'Camera',
+                    onTap: _pickFromCamera,
+                    isPrimary: false,
+                  ),
+                if (!kIsWeb)
+                  const SizedBox(width: 16),
                 _buildOptionButton(
                   icon: Icons.photo_library_rounded,
                   label: 'Gallery',
@@ -465,9 +568,9 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Live Detection',
-                    style: TextStyle(
+                  Text(
+                    kIsWeb ? 'Webcam Detection' : 'Live Detection',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
@@ -475,7 +578,7 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Point camera at ingredients',
+                    kIsWeb ? 'Use webcam to scan ingredients' : 'Point camera at ingredients',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.8),
                       fontSize: 13,
@@ -521,6 +624,7 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
 
     // Load available ingredients and auto-select detected ones
     _loadAvailableIngredients().then((_) {
+      if (!mounted) return;
       if (result.ingredientNames.isNotEmpty) {
         _autoSelectDetectedIngredients(result.ingredientNames);
       }
@@ -661,14 +765,12 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
                     label: 'Change',
                     onTap: _pickFromGallery,
                   ),
-                  if (!kIsWeb) ...[
-                    const SizedBox(width: 16),
-                    _buildSmallButton(
-                      icon: Icons.camera_alt_rounded,
-                      label: 'Retake',
-                      onTap: _pickFromCamera,
-                    ),
-                  ],
+                  const SizedBox(width: 16),
+                  _buildSmallButton(
+                    icon: Icons.camera_alt_rounded,
+                    label: kIsWeb ? 'Webcam' : 'Retake',
+                    onTap: _pickFromCamera,
+                  ),
                 ],
               ),
             ),
@@ -698,63 +800,101 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
   Widget _buildDetectButton() {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
+        gradient: LinearGradient(
+          colors: [AppColors.primary, AppColors.primaryLight],
+        ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Icon(Icons.auto_awesome, color: AppColors.primary, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'AI Detection (Optional)',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.onSurface,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Let AI try to detect ingredients automatically',
-            style: TextStyle(
-              color: AppColors.onSurfaceVariant,
-              fontSize: 13,
-            ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _isDetecting ? null : _detectIngredients,
-              icon: _isDetecting
-                  ? SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.primary,
-                      ),
-                    )
-                  : Icon(Icons.search_rounded, color: AppColors.primary),
-              label: Text(
-                _isDetecting ? 'Detecting...' : 'Try AI Detection',
-                style: TextStyle(color: AppColors.primary),
-              ),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.all(14),
-                side: BorderSide(color: AppColors.primary),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.4),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _isDetecting ? null : _detectIngredients,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _isDetecting
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.auto_awesome, color: Colors.white, size: 22),
+                const SizedBox(width: 12),
+                Text(
+                  _isDetecting ? 'Detecting Ingredients...' : 'Detect Ingredients with AI',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Build "Add to Pantry" button
+  Widget _buildAddToPantryButton() {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: 0.4),
+          width: 1.5,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _isAddingToPantry ? null : _addSelectedToPantry,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _isAddingToPantry
+                    ? SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.primary,
+                        ),
+                      )
+                    : Icon(Icons.kitchen_rounded,
+                        color: AppColors.primary, size: 22),
+                const SizedBox(width: 12),
+                Text(
+                  _isAddingToPantry ? 'Adding to Pantry...' : 'Add to Pantry',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -1028,6 +1168,8 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
           ),
         ),
         const SizedBox(height: 20),
+        _buildAddToPantryButton(),
+        const SizedBox(height: 12),
         Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -1538,6 +1680,8 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
             // Only show this button if NO detection results (to avoid duplicate buttons)
             if (_selectedIngredientIds.isNotEmpty && _detectionResult == null) ...[
               const SizedBox(height: 24),
+              _buildAddToPantryButton(),
+              const SizedBox(height: 12),
               Container(
                 width: double.infinity,
                 decoration: BoxDecoration(

@@ -1,5 +1,6 @@
 from flask import request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from sqlalchemy.orm import joinedload
 from app import db
 from app.models import Recipe, RecipeIngredient, Ingredient
 from app.api import recipes_bp
@@ -92,10 +93,10 @@ def search_recipes():
     if not ingredient_ids:
         return jsonify({'recipes': []}), 200
 
-    # Find recipes that use these ingredients
+    # Find recipes that use these ingredients (eager load ingredients to avoid N+1)
     recipes_query = db.session.query(Recipe).join(RecipeIngredient).filter(
         RecipeIngredient.ingredient_id.in_(ingredient_ids)
-    ).distinct(Recipe.id)
+    ).options(joinedload(Recipe.ingredients)).distinct(Recipe.id)
 
     # Apply additional filters if provided
     if data.get('dietary_preferences'):
@@ -112,7 +113,7 @@ def search_recipes():
     # Calculate match percentage for each recipe
     results = []
     for recipe in recipes:
-        recipe_ingredient_ids = [ri.ingredient_id for ri in recipe.ingredients.all()]
+        recipe_ingredient_ids = [ri.ingredient_id for ri in recipe.ingredients]
         matching = len(set(ingredient_ids) & set(recipe_ingredient_ids))
         total = len(recipe_ingredient_ids)
         match_percentage = (matching / total * 100) if total > 0 else 0

@@ -1,3 +1,6 @@
+import logging
+import os
+
 from flask import request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
@@ -5,7 +8,8 @@ from app.models import Ingredient, DetectionFeedback
 from app.api import ingredients_bp
 from app.ml import IngredientDetector, ML_AVAILABLE
 from app.ml.google_vision_detector import GoogleVisionDetector
-import os
+
+logger = logging.getLogger(__name__)
 
 # Initialize detectors (will load when needed)
 yolo_detector = None
@@ -39,9 +43,9 @@ def get_vision_detector():
             # Get the backend directory (parent of app directory)
             backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             credentials_path = os.path.join(backend_dir, credentials_path)
-        print(f"DEBUG: Loading Google Vision credentials from: {credentials_path}")
+        logger.debug(f"Loading Google Vision credentials from: {credentials_path}")
         vision_detector = GoogleVisionDetector(credentials_path=credentials_path)
-        print(f"DEBUG: Google Vision available: {vision_detector.available}")
+        logger.debug(f"Google Vision available: {vision_detector.available}")
     return vision_detector
 
 
@@ -107,15 +111,17 @@ def detect_ingredients():
         return jsonify({'error': 'Invalid file type. Allowed: png, jpg, jpeg, gif, bmp'}), 400
 
     try:
-        # Read image bytes
+        # Read image bytes and validate size (max 10MB)
         image_bytes = file.read()
+        if len(image_bytes) > 10 * 1024 * 1024:
+            return jsonify({'error': 'Image too large. Maximum size is 10MB.'}), 400
 
         all_detections = []
         detection_source = 'none'
 
         # Try Google Vision first (much better for food detection)
         vision_det = get_vision_detector()
-        if vision_det.available:
+        if vision_det is not None and vision_det.available:
             vision_detections = vision_det.detect_from_bytes(image_bytes)
             if vision_detections:
                 all_detections.extend(vision_detections)
@@ -157,14 +163,14 @@ def detect_ingredients():
             'total_detected': len(all_detections),
             'debug_info': {
                 'detection_source': detection_source,
-                'vision_available': vision_det.available if vision_det else False
+                'vision_available': vision_det.available if vision_det is not None else False
             }
         }), 200
 
     except Exception as e:
+        logger.exception('Ingredient detection failed')
         return jsonify({
-            'error': 'Ingredient detection failed',
-            'details': str(e)
+            'error': 'Ingredient detection failed. Please try again.'
         }), 500
 
 

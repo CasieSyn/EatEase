@@ -96,8 +96,12 @@ class IngredientDetectionService {
         final data = json.decode(response.body);
         return IngredientDetectionResult.fromJson(data as Map<String, dynamic>);
       } else {
-        final error = json.decode(response.body);
-        throw Exception(error['error'] ?? 'Failed to detect ingredients: ${response.statusCode}');
+        try {
+          final error = json.decode(response.body);
+          throw Exception(error['error'] ?? 'Failed to detect ingredients: ${response.statusCode}');
+        } on FormatException {
+          throw Exception('Failed to detect ingredients: server error (${response.statusCode})');
+        }
       }
     } on TimeoutException {
       throw Exception('Detection timed out. Please check your connection and try again.');

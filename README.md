@@ -58,21 +58,24 @@ EatEase/
 5. **User Profiles** - Editable profile with photo upload support
 6. **Recipe Ratings** - Rate and review recipes
 7. **Authentication** - Secure JWT-based login with token refresh
-8. **AI Ingredient Detection** - Camera/gallery image ingredient detection using YOLOv8n
+8. **AI Ingredient Detection** - Camera/gallery image ingredient detection using Google Vision + YOLOv8n fallback
 9. **Recipe Search by Detection** - Find recipes based on detected ingredients
+10. **AI Recipe Recommendations** - Personalized suggestions, quick recipes, and cuisine-based recommendations
+11. **Pantry Management** - Track ingredients on hand with quantity, unit, and expiry date
+12. **Detection Feedback** - User corrections improve AI ingredient detection accuracy over time
+13. **PWA Support** - Progressive Web App enhancements for mobile-width web experience
 
 ### 🚧 In Development
-10. **AI Recipe Recommendations** - Personalized suggestions based on preferences
-11. **Nutritional Dashboard** - Detailed nutrition tracking per meal
+14. **Nutritional Dashboard** - Detailed nutrition tracking per meal
 
 ### 📋 Planned
-12. **Dietary Preferences** - Vegetarian, vegan, gluten-free, allergies support
-13. **Freemium Model** - Premium features with subscription
+15. **Dietary Preferences** - Vegetarian, vegan, gluten-free, allergies support
+16. **Freemium Model** - Premium features with subscription
 
 ## Competitive Advantage
 
 Unlike competitors (SuperCook, Plant Jammer, ChefGPT, FoodAI), EatEase offers:
-- **Computer vision-powered** real-time ingredient detection (vs manual input)
+- **Computer vision-powered** real-time ingredient detection via Google Vision + YOLO (vs manual input)
 - **Filipino market focus** (General Santos City)
 - **Comprehensive support** (email & chat)
 - **Mobile-first** experience
@@ -183,15 +186,19 @@ See individual READMEs in [backend/](backend/README.md) and [frontend/](frontend
 
 ### Phase 6: AI Integration ✅ COMPLETED
 - [x] YOLO model download and setup (YOLOv8n)
+- [x] Google Vision + YOLO fallback detection pipeline
 - [x] Camera ingredient detection integration
 - [x] Image preprocessing pipeline (backend)
 - [x] Ingredient detection service (Flutter)
 - [x] Detection screen UI with camera/gallery
 - [x] Recipe search integration with detected ingredients
 - [x] Confidence-based filtering and display
+- [x] AI-powered recipe recommendations (personalized, quick, cuisine-based)
+- [x] Detection feedback system (user corrections improve accuracy)
+- [x] Pantry management system (track ingredients on hand)
+- [x] PWA enhancements for mobile web experience
 - [ ] ML recipe ranking algorithm (future enhancement)
 - [ ] Nutritional calculation engine (future enhancement)
-- [ ] AI-powered recipe recommendations (future enhancement)
 
 ### Phase 7: Polish & Production (Upcoming)
 - [ ] Freemium subscription logic
@@ -220,15 +227,25 @@ Production: https://api.eatease.com/api (TBD)
 
 **Recipes**
 - `GET /recipes/` - List recipes (with search, category, difficulty filters)
+- `POST /recipes/` - Create a new recipe
 - `GET /recipes/<id>` - Get recipe details
+- `PUT /recipes/<id>` - Update a recipe
+- `DELETE /recipes/<id>` - Delete a recipe
 - `POST /recipes/search` - Search by ingredients
-- `GET /recipes/recommend` - Get AI-recommended recipes
+- `POST /recipes/recommend` - Get personalized AI recommendations
+- `GET /recipes/recommend/quick` - Get quick recipes (by max cook time)
+- `GET /recipes/recommend/cuisine/<type>` - Get recommendations by cuisine
 - `POST /recipes/<id>/rate` - Rate a recipe
+- `GET /recipes/<id>/image` - Get recipe image
+- `POST /recipes/fetch-images` - Batch fetch recipe images
 
 **Ingredients**
 - `GET /ingredients/` - List ingredients (with category filter)
 - `GET /ingredients/<id>` - Get ingredient details
+- `POST /ingredients/` - Create an ingredient
 - `POST /ingredients/detect` - Detect from image (AI)
+- `POST /ingredients/detect/feedback` - Submit detection corrections
+- `GET /ingredients/detect/learned-mappings` - Get learned detection mappings
 
 **Users**
 - `GET /users/profile` - Get user profile
@@ -238,11 +255,19 @@ Production: https://api.eatease.com/api (TBD)
 - `GET /users/preferences` - Get dietary preferences
 - `PUT /users/preferences` - Update preferences
 
+**Pantry**
+- `GET /users/pantry` - Get pantry items
+- `POST /users/pantry` - Add ingredient(s) to pantry
+- `PUT /users/pantry/<id>` - Update a pantry item
+- `DELETE /users/pantry/<id>` - Remove a pantry item
+- `DELETE /users/pantry/ingredient/<ingredient_id>` - Remove by ingredient
+- `DELETE /users/pantry/bulk` - Remove multiple ingredients
+- `DELETE /users/pantry/clear` - Clear entire pantry
+
 **Meal Plans**
 - `GET /users/meal-plans` - Get meal plans (with date range)
 - `POST /users/meal-plans` - Create meal plan
-- `PUT /users/meal-plans/<id>` - Update meal plan
-- `POST /users/meal-plans/<id>/complete` - Mark as completed
+- `PUT /users/meal-plans/<id>` - Update meal plan (including mark as completed via `is_completed`)
 - `DELETE /users/meal-plans/<id>` - Delete meal plan
 
 **Shopping Lists**
@@ -263,6 +288,8 @@ See [backend/README.md](backend/README.md) for full API documentation.
 - `user_preferences` - Dietary preferences & goals
 - `meal_plans` - User meal scheduling
 - `shopping_lists` - Generated shopping lists
+- `user_pantry` - User ingredient inventory with quantity & expiry tracking
+- `detection_feedback` - AI detection corrections & learned mappings
 
 ## Target Market
 
@@ -309,7 +336,7 @@ TBD - AWS deployment strategy
 - [Product Documentation](_documentation/EatEase.md)
 - [Backend API](backend/README.md)
 - [Frontend App](frontend/README.md)
-- [Main Guidelines](Main.md)
+- [Main Guidelines](_documentation/Main.md)
 
 ## License
 

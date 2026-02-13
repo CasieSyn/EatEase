@@ -28,7 +28,7 @@ class IngredientDetector:
         # Direct food mappings (keep it accurate, not guessing)
         'apple': 'Apple',  # If we have apple in DB, otherwise None
         'banana': 'Banana',  # If we have banana in DB, otherwise None
-        'orange': 'Tomato',  # Round red items often detected as orange -> likely tomato
+        'orange': None,  # COCO can't reliably distinguish orange from tomato — skip
         'broccoli': 'Broccoli',  # Or map to Cabbage if no broccoli
         'carrot': 'Carrot',
         'hot dog': None,  # Skip - not a Filipino ingredient

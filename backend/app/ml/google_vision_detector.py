@@ -4,8 +4,11 @@ Uses Google Cloud Vision for accurate food/ingredient detection
 Includes machine learning from user corrections
 """
 
+import logging
 import os
 from typing import List, Dict, Optional
+
+logger = logging.getLogger(__name__)
 try:
     from google.cloud import vision
     VISION_AVAILABLE = True
@@ -505,7 +508,7 @@ class GoogleVisionDetector:
         self.available = VISION_AVAILABLE
 
         if not VISION_AVAILABLE:
-            print("Google Cloud Vision not available. Install with: pip install google-cloud-vision")
+            logger.warning("Google Cloud Vision not available. Install with: pip install google-cloud-vision")
             return
 
         # Try to initialize client
@@ -514,10 +517,9 @@ class GoogleVisionDetector:
                 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
 
             self.client = vision.ImageAnnotatorClient()
-            print("Google Vision API initialized successfully")
+            logger.info("Google Vision API initialized successfully")
         except Exception as e:
-            print(f"Warning: Could not initialize Google Vision API: {e}")
-            print("Detector will work in fallback mode")
+            logger.warning(f"Could not initialize Google Vision API: {e}. Detector will work in fallback mode.")
             self.available = False
 
     def _get_learned_mappings(self) -> Dict[str, str]:
@@ -540,9 +542,9 @@ class GoogleVisionDetector:
                     for label, data in learned.items()
                 }
                 GoogleVisionDetector._cache_timestamp = now
-                print(f"Refreshed learned mappings cache: {len(GoogleVisionDetector._learned_mappings_cache)} entries")
+                logger.debug(f"Refreshed learned mappings cache: {len(GoogleVisionDetector._learned_mappings_cache)} entries")
             except Exception as e:
-                print(f"Could not load learned mappings: {e}")
+                logger.warning(f"Could not load learned mappings: {e}")
                 GoogleVisionDetector._learned_mappings_cache = {}
 
         return GoogleVisionDetector._learned_mappings_cache
@@ -634,7 +636,7 @@ class GoogleVisionDetector:
             return detections
 
         except Exception as e:
-            print(f"Error in Google Vision detection: {e}")
+            logger.error(f"Error in Google Vision detection: {e}")
             return []
 
     @staticmethod
@@ -677,13 +679,13 @@ class GoogleVisionDetector:
         # First, check learned mappings (user corrections take priority)
         learned_mappings = self._get_learned_mappings()
         if label in learned_mappings:
-            print(f"Using learned mapping: {label} -> {learned_mappings[label]}")
+            logger.debug(f"Using learned mapping: {label} -> {learned_mappings[label]}")
             return learned_mappings[label]
 
         # Check partial matches in learned mappings (with guards)
         for key, value in learned_mappings.items():
             if (key in label or label in key) and self._is_valid_partial_match(key, label):
-                print(f"Using learned partial mapping: {label} -> {value}")
+                logger.debug(f"Using learned partial mapping: {label} -> {value}")
                 return value
 
         # Then check static mappings - Direct match
@@ -710,12 +712,16 @@ class GoogleVisionDetector:
             Filtered list without duplicates
         """
         seen = {}
+        unmapped = []
         for detection in detections:
             name = detection['name']
-            if name not in seen or detection['confidence'] > seen[name]['confidence']:
+            if name is None:
+                # Keep all unmapped detections — don't merge them
+                unmapped.append(detection)
+            elif name not in seen or detection['confidence'] > seen[name]['confidence']:
                 seen[name] = detection
 
-        return list(seen.values())
+        return list(seen.values()) + unmapped
 
     def get_ingredient_names(self, detections: List[Dict]) -> List[str]:
         """
