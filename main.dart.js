@@ -31395,7 +31395,7 @@ case 2:return A.vE(A.b([A.FB(B.Do),A.aba()],t.mo),t.H)
 case 3:case 4:case 5:return A.dj(null,t.H)}},
 b0g(){return $.b0f.by()},
 b0h(){return A.b0g()},
-d5(){return"http://localhost:5000"},
+d5(){return"https://eatease-api.onrender.com"},
 baE(a,b,c){var s,r,q,p
 try{q=c.$0()
 return q}catch(p){q=A.a4(p)
