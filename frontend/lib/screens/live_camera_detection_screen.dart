@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import '../main.dart';
@@ -242,7 +241,7 @@ class _LiveCameraDetectionScreenState extends State<LiveCameraDetectionScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        kIsWeb ? 'Webcam Detection' : 'Live Detection',
+                        'Live Detection',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 20,

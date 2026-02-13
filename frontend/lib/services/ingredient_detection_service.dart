@@ -66,13 +66,14 @@ class IngredientDetectionService {
 
       // Add image file
       if (kIsWeb) {
-        // For web, use bytes
+        // For web, use bytes (camera_web returns blob URLs without proper filenames)
         final bytes = await imageFile.readAsBytes();
+        final filename = imageFile.name.contains('.') ? imageFile.name : 'capture.jpg';
         request.files.add(
           http.MultipartFile.fromBytes(
             'image',
             bytes,
-            filename: imageFile.name,
+            filename: filename,
           ),
         );
       } else {

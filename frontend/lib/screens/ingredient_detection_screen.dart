@@ -569,7 +569,7 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    kIsWeb ? 'Webcam Detection' : 'Live Detection',
+                    'Live Detection',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -578,7 +578,7 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    kIsWeb ? 'Use webcam to scan ingredients' : 'Point camera at ingredients',
+                    'Point camera at ingredients',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.8),
                       fontSize: 13,
@@ -768,7 +768,7 @@ class _IngredientDetectionScreenState extends State<IngredientDetectionScreen> {
                   const SizedBox(width: 16),
                   _buildSmallButton(
                     icon: Icons.camera_alt_rounded,
-                    label: kIsWeb ? 'Webcam' : 'Retake',
+                    label: 'Retake',
                     onTap: _pickFromCamera,
                   ),
                 ],
