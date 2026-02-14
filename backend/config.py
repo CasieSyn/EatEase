@@ -26,10 +26,6 @@ class Config:
     UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads/')
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
-    # YOLO Model
-    YOLO_MODEL_PATH = os.getenv('YOLO_MODEL_PATH', 'models/yolov8n.pt')
-    YOLO_CONFIDENCE_THRESHOLD = float(os.getenv('YOLO_CONFIDENCE_THRESHOLD', 0.5))
-
     # Google Cloud Vision
     GOOGLE_VISION_CREDENTIALS = os.getenv('GOOGLE_VISION_CREDENTIALS', 'credentials/google-vision.json')
 

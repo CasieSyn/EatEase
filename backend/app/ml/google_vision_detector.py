@@ -513,8 +513,22 @@ class GoogleVisionDetector:
 
         # Try to initialize client
         try:
-            if credentials_path and os.path.exists(credentials_path):
+            # Priority 1: Base64-encoded credentials from env var (for cloud deployments like Render)
+            credentials_json_b64 = os.environ.get('GOOGLE_VISION_CREDENTIALS_JSON')
+            if credentials_json_b64:
+                import base64
+                import tempfile
+                credentials_data = base64.b64decode(credentials_json_b64)
+                tmp = tempfile.NamedTemporaryFile(mode='wb', suffix='.json', delete=False)
+                tmp.write(credentials_data)
+                tmp.close()
+                os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = tmp.name
+                logger.info("Using Google Vision credentials from GOOGLE_VISION_CREDENTIALS_JSON env var")
+
+            # Priority 2: File path credentials (for local development)
+            elif credentials_path and os.path.exists(credentials_path):
                 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
+                logger.info(f"Using Google Vision credentials from file: {credentials_path}")
 
             self.client = vision.ImageAnnotatorClient()
             logger.info("Google Vision API initialized successfully")
@@ -542,7 +556,8 @@ class GoogleVisionDetector:
                     for label, data in learned.items()
                 }
                 GoogleVisionDetector._cache_timestamp = now
-                logger.debug(f"Refreshed learned mappings cache: {len(GoogleVisionDetector._learned_mappings_cache)} entries")
+                cache_size = len(GoogleVisionDetector._learned_mappings_cache)
+                logger.debug(f"Refreshed learned mappings cache: {cache_size} entries")
             except Exception as e:
                 logger.warning(f"Could not load learned mappings: {e}")
                 GoogleVisionDetector._learned_mappings_cache = {}

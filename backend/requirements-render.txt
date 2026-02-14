@@ -22,6 +22,8 @@ requests==2.31.0
 # Validation
 email-validator==2.1.0
 
-# NOTE: Heavy ML dependencies (tensorflow, ultralytics, opencv-python, scikit-learn)
-# are excluded to fit within Render free tier 512MB RAM limit.
-# The app will still work - only image detection features will be unavailable.
+# AI Detection (lightweight gRPC/REST API client, ~15MB — NOT a heavy ML library)
+google-cloud-vision>=3.4.0
+
+# NOTE: This file mirrors requirements.txt for Render deployment.
+# google-cloud-vision is a lightweight API client (~15MB), safe for Render free tier.

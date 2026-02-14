@@ -6,31 +6,12 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
 from app.models import Ingredient, DetectionFeedback
 from app.api import ingredients_bp
-from app.ml import IngredientDetector, ML_AVAILABLE
 from app.ml.google_vision_detector import GoogleVisionDetector
 
 logger = logging.getLogger(__name__)
 
-# Initialize detectors (will load when needed)
-yolo_detector = None
+# Initialize detector (will load when needed)
 vision_detector = None
-
-
-def get_yolo_detector():
-    """Lazy load YOLO detector instance"""
-    global yolo_detector
-    if not ML_AVAILABLE or IngredientDetector is None:
-        return None
-    if yolo_detector is None:
-        model_path = current_app.config.get('YOLO_MODEL_PATH', 'models/yolov8n.pt')
-        confidence = current_app.config.get('YOLO_CONFIDENCE_THRESHOLD', 0.5)
-        yolo_detector = IngredientDetector(model_path=model_path, confidence_threshold=confidence)
-
-        # Download model if not exists
-        if not os.path.exists(model_path):
-            yolo_detector.download_model()
-
-    return yolo_detector
 
 
 def get_vision_detector():
@@ -96,7 +77,7 @@ def get_ingredient(ingredient_id):
 @ingredients_bp.route('/detect', methods=['POST'])
 @jwt_required()
 def detect_ingredients():
-    """Detect ingredients from uploaded image using Google Vision (primary) + YOLO (fallback)"""
+    """Detect ingredients from uploaded image using Google Vision API"""
     if 'image' not in request.files:
         return jsonify({'error': 'No image file provided'}), 400
 
@@ -119,22 +100,13 @@ def detect_ingredients():
         all_detections = []
         detection_source = 'none'
 
-        # Try Google Vision first (much better for food detection)
+        # Detect ingredients using Google Vision API
         vision_det = get_vision_detector()
         if vision_det is not None and vision_det.available:
             vision_detections = vision_det.detect_from_bytes(image_bytes)
             if vision_detections:
                 all_detections.extend(vision_detections)
                 detection_source = 'google_vision'
-
-        # Fallback to YOLO if Google Vision didn't find anything
-        if not all_detections:
-            yolo_det = get_yolo_detector()
-            if yolo_det is not None:
-                yolo_detections = yolo_det.detect_from_bytes(image_bytes)
-                # Filter to only mapped detections
-                all_detections = [d for d in yolo_detections if d.get('name') is not None]
-                detection_source = 'yolo' if all_detections else 'none'
 
         # Extract ingredient names (filter None values)
         ingredient_names = list(set([d['name'] for d in all_detections if d.get('name')]))
@@ -167,7 +139,7 @@ def detect_ingredients():
             }
         }), 200
 
-    except Exception as e:
+    except Exception:
         logger.exception('Ingredient detection failed')
         return jsonify({
             'error': 'Ingredient detection failed. Please try again.'

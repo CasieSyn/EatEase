@@ -7,7 +7,9 @@ class ApiConfig {
   // ========================================
 
   // PRODUCTION URL (Render deployment)
-  // Pass via: flutter build web --dart-define=API_URL=https://your-app.onrender.com
+  // IMPORTANT: When building for GitHub Pages deployment, you MUST pass the backend URL:
+  //   flutter build web --dart-define=API_URL=https://your-app.onrender.com
+  // Without this flag, the web build defaults to http://localhost:5000 which won't work.
   static const String _productionUrl = String.fromEnvironment(
     'API_URL',
     defaultValue: '',

@@ -7,7 +7,7 @@ import '../models/ingredient.dart';
 import '../utils/api_config.dart';
 import 'auth_service.dart';
 
-/// Service for ingredient detection from images using YOLO
+/// Service for ingredient detection from images using Google Vision API
 class IngredientDetectionService {
   final AuthService _authService = AuthService();
 

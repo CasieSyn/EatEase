@@ -74,7 +74,7 @@ class DetectionFeedback(db.Model):
 
     @classmethod
     def add_or_update_feedback(cls, detected_label, correct_ingredient,
-                                ai_mapped=None, ingredient_id=None, user_id=None):
+                               ai_mapped=None, ingredient_id=None, user_id=None):
         """
         Add new feedback or increment existing correction count.
         """

@@ -28,3 +28,5 @@ services:
         sync: false
       - key: GOOGLE_SEARCH_ENGINE_ID
         sync: false
+      - key: GOOGLE_VISION_CREDENTIALS_JSON
+        sync: false
