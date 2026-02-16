@@ -100120,7 +100120,7 @@ $2(a,b){var s=null,r=this.a,q=r.e
 q===$&&A.a()
 r=r.f
 r===$&&A.a()
-return new A.dj(q,!1,A.Ti(A.ax(A.b([A.aNG("assets/logo with name.jpg",B.kP,80),B.az,A.E("AI-Powered Filipino Meal Planning",s,s,s,s,A.ad(s,s,B.f.S(0.9),s,s,s,s,s,s,s,s,16,s,s,s,s,s,!0,s,0.5,s,s,s,s,s,s),s,s,s),B.DB,A.bZ(A.mb(s,s,s,s,s,s,s,3,s,new A.nW(B.f.S(0.8),t.ZU)),32,32)],t.p),B.k,B.ak,B.j),r),s)},
+return new A.dj(q,!1,A.Ti(A.ax(A.b([A.aNG("assets/logo_with_name-transparent.png",B.kP,80),B.az,A.E("AI-Powered Filipino Meal Planning",s,s,s,s,A.ad(s,s,B.f.S(0.9),s,s,s,s,s,s,s,s,16,s,s,s,s,s,!0,s,0.5,s,s,s,s,s,s),s,s,s),B.DB,A.bZ(A.mb(s,s,s,s,s,s,s,3,s,new A.nW(B.f.S(0.8),t.ZU)),32,32)],t.p),B.k,B.ak,B.j),r),s)},
 $S:252}
 A.MM.prototype={
 l(){var s=this,r=s.bz$
@@ -101375,7 +101375,7 @@ else{o=o.U(t.q).f
 l=n.d
 o.bS(A.bW(null,null,null,B.N,B.a1,B.v,null,A.E(l==null?"Login failed":l,null,null,null,null,null,null,null,null),null,B.Z,null,null,null,null,null,null,new A.aQ(A.P(10),B.p),null,null))}case 1:return A.q(q,r)}})
 return A.r($async$Cz,r)},
-F(a){var s,r,q,p,o,n,m=this,l=null,k=A.aNG("assets/logo with name.jpg",B.kP,70),j=A.D(a).ok.z
+F(a){var s,r,q,p,o,n,m=this,l=null,k=A.aNG("assets/logo_with_name-transparent.png",B.kP,70),j=A.D(a).ok.z
 j=A.E("AI-Powered Filipino Meal Planning",l,l,l,l,j==null?l:j.bo(B.u),B.aC,l,l)
 s=A.E("Welcome Back",l,l,l,l,A.D(a).ok.e,B.aC,l,l)
 r=A.E("Sign in to continue cooking delicious meals",l,l,l,l,A.D(a).ok.z,B.aC,l,l)
@@ -104021,7 +104021,7 @@ o.bS(A.bW(null,null,null,B.N,B.a1,B.v,null,A.E(m==null?"Registration failed":m,n
 return A.r($async$CC,r)},
 F(a){var s,r,q,p,o,n,m,l,k,j,i=this,h=null,g=A.P(12)
 g=A.kR(h,h,h,!0,h,h,1,h,h,h,!1,h,!1,h,h,A.Y(h,A.cG(h,h,h,B.j7,h,h,new A.aFF(a),h,h,h,h),B.e,h,h,new A.W(B.a9,h,h,g,h,h,B.m),h,h,h,B.au,h,h,h,h),h,!0,h,h,h,h,h,B.oi,h,h,h,1,h,!0)
-s=A.aNG("assets/logo with name.jpg",B.kP,70)
+s=A.aNG("assets/logo_with_name-transparent.png",B.kP,70)
 r=A.D(a).ok.e
 r=A.E("Join EatEase",h,h,h,h,r==null?h:r.q4(B.a_),B.aC,h,h)
 q=A.D(a).ok.z
