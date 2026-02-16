@@ -66,29 +66,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Logo icon
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.restaurant_menu,
-                      size: 56,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Logo/Title
-                  Text(
-                    'EatEase',
-                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                        ),
-                    textAlign: TextAlign.center,
+                  // Logo
+                  Image.asset(
+                    'assets/logo_with_name-transparent.png',
+                    height: 70,
+                    fit: BoxFit.contain,
                   ),
                   const SizedBox(height: 8),
                   Text(

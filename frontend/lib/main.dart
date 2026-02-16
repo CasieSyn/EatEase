@@ -324,28 +324,11 @@ class _SplashScreenState extends State<SplashScreen>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Logo icon
-                      Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.restaurant_menu,
-                          size: 64,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      const Text(
-                        'EatEase',
-                        style: TextStyle(
-                          fontSize: 42,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          letterSpacing: -1,
-                        ),
+                      // Logo
+                      Image.asset(
+                        'assets/logo_with_name-transparent.png',
+                        height: 80,
+                        fit: BoxFit.contain,
                       ),
                       const SizedBox(height: 8),
                       Text(

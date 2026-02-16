@@ -91,20 +91,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Logo icon
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: AppColors.secondary.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.person_add_rounded,
-                      size: 56,
-                      color: AppColors.secondary,
-                    ),
+                  // Logo
+                  Image.asset(
+                    'assets/logo_with_name-transparent.png',
+                    height: 70,
+                    fit: BoxFit.contain,
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
 
                   // Title
                   Text(
